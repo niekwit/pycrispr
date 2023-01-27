@@ -4,3 +4,17 @@ def md5sum():
 	pass
 	
 
+def rename(work_dir):
+    pass
+
+
+def fastqc(work_dir):
+    pass
+
+
+
+
+
+
+
+

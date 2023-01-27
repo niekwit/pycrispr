@@ -9,15 +9,11 @@ setup(
     author='Niek Wit',
     author_email='nw416@cam.ac.uk',
     license='GPL-3.0 license',
-    #packages=find_packages(),
-    include_package_data=True,
-    package_dir={'': 'pycrispr'},
-    packages=setuptools.find_packages(where='pycrispr'),
-    package_data={"scripts":["*.yaml"]},
+    packages=find_packages(),
     install_requires=['seaborn','matplotlib',
                       'numpy','pandas','pyyaml',
                       'tqdm','gseapy','clint',
-                      'Click'
+                      'cutadapt', 'multiqc','Click'
                       ],
     classifiers=[
         'Development Status :: 1 - Planning',
