@@ -2,17 +2,10 @@
 
 import os
 import click
-from ..scripts import utils as utils
 import yaml
+from clint.textui import colored, puts
 
-
-#load crispr lib info
-#script_dir = os.path.abspath(os.path.dirname(__file__))
-#yaml_dir = os.path.join(os.path.dirname(os.path.dirname(script_dir)),"yaml")
-#with open(os.path.join(yaml_dir,
-#                       "crispr.yaml")) as file:
-#    crispr_libs = yaml.full_load(file)
-#crispr_library_list = list(crispr_libs.keys())
+from ..scripts import utils as utils
 
 
 #command line parser
@@ -20,39 +13,76 @@ import yaml
 @click.option("--md5sums", is_flag=True, show_default=True, default=False,
               help="Check md5sums of fastq files")
 @click.option("--fastqc", is_flag=True, show_default=True, default=False,
-              help="Fastqc/Multiqc on fastq files")
+              help="Quality control of fastq files")
 @click.option("-r", "--rename", is_flag=True, show_default=True, default=False, 
               help="Rename fastq files according to rename.txt")
 @click.option("-t","--threads", default=1, type=int, 
-              help="Number of CPU threads used for analysis")
+              help="Number of CPU threads used during analysis")
 @click.option("-l","--library", 
-              help="CRISPR-Cas9 library")
+                  help="CRISPR-Cas9 library")
 @click.option("-m","--mismatch", default=0, show_default=True, type=int, 
               help="Number of mismatches allowed during alignment")
 @click.option("-a","--analysis", default="mageck", show_default=True, 
               type=click.Choice(["mageck","bagel2"]),
               help="Statistical analysis with MAGeCK or BAGEL2")
 @click.option("-c","--cnv", default=None, show_default=True, 
-              type=int,
-              help="Apply CNV correction for MAGeCK/BAGEL2 with given cell line")
+              type=str,
+              help="Apply CNV correction for MAGeCK/BAGEL2 for given cell line")
 @click.option("-f","--fdr", default=0.25, show_default=True, 
               type=float,
               help="FDR cutoff for MAGeCK")
 @click.option("--go", is_flag=True, show_default=True, default=False,
-              help="Apply gene ontology analysis to MAGeCK or BAGEL2 results")
+              help="Apply gene ontology analysis to MAGeCK and/or BAGEL2 results")
+@click.option("--load-library", is_flag=True, show_default=True, default=False,
+              help="Add sgRNA library to crispr.yaml")
 
 
-def cli(md5sum,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
+def cli(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go,load_library):
     """CRISPR-Cas9 screen analysis"""
-    if md5sum == True:
+    puts(colored.green("CRISPR-Cas9 screen analysis with pycrispr"))
+    
+    #get working directory
+    work_dir = os.getcwd()
+    
+    #add sgRNA library info
+    if load_library == True:
+        utils.loadLibrary()
+        click.echo("Please run pycrispr again (sgRNA library info added)")
+        return()
+    
+    #run selected functions
+    if md5sums == True:
         click.echo("Checking md5sums of fastq files in raw-data/")
-    else:
-        click.echo(f"{library} library selected")
-        click.echo(f"Mismatches allowed: {mismatch}")
-        if rename == True:
-            click.echo("Renaming fastq files according to rename.txt")
-            utils.rename()
-        
+        md5sum_match = utils.md5sums(work_dir)
+        if md5sum_match == False:
+            click.echo("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
+    click.echo(f"{library} library selected")
+    click.echo(f"Mismatches allowed: {mismatch}")
+    if rename == True:
+        click.echo("Renaming fastq files according to rename.txt")
+        utils.rename(work_dir)
+    if fastqc == True:
+        click.echo("Running FastQC/Multiqc")
+        utils.fastqc(work_dir,threads)
+    #count sgRNA reads
+    utils.count(work_dir,threads,mismatch,library)
+    
+    #join count files
+    utils.join(work_dir,yaml,library)
+    
+    #create normalised count file
+    utils.normalise(work_dir)
+    
+    #apply statistics to count files
+    if analysis == "mageck":
+        utils.mageck(work_dir)
+    elif analysis == "bagel2":
+        utils.bagel2(work_dir)
+
+    #run gene ontology analysis
+    if go == True:
+        utils.go(work_dir)
+
 
 
 
