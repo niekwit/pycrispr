@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 
-import os
 import click
-import yaml
-from clint.textui import colored, puts
-
 from ..scripts import utils as utils
 
 
@@ -39,7 +35,7 @@ from ..scripts import utils as utils
 
 def cli(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go,load_library):
     """CRISPR-Cas9 screen analysis"""
-    puts(colored.green("CRISPR-Cas9 screen analysis with pycrispr"))
+    click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
         
     #add sgRNA library info
     if load_library == True:
@@ -64,21 +60,23 @@ def cli(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go,load_
     utils.count(threads,mismatch,library)
     
     #join count files
-    #utils.join(library)
+    utils.join(library)
     
     #create normalised count file
-    #utils.normalise()
+    utils.normalise()
     
     #apply statistics to count files
     if analysis == "mageck":
-        utils.mageck()
+        utils.mageck(cnv)
     elif analysis == "bagel2":
         utils.bagel2()
 
     #run gene ontology analysis
     if go == True:
         utils.go()
-
-
-
-
+        
+        
+#if __name__ == '__main__':
+#    cli()
+        
+        

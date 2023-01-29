@@ -10,7 +10,7 @@ import glob
 import subprocess
 import numpy as np
 import pandas as pd
-from clint.textui import colored, puts
+import click
 import yaml
 from itertools import compress
 from tqdm.auto import tqdm
@@ -79,7 +79,7 @@ def md5sums():
     #get md5sum files
     md5sum_files = glob.glob(os.path.join(work_dir,"raw-data","*.md5sums.txt"))
     if len(md5sum_files) == 0:
-        puts(colored.red("ERROR: no *.md5sum.txt files found in raw-data/"))
+        click.secho("ERROR: no *.md5sum.txt files found in raw-data/",fg="red")
         return()
     
     #df to store md5sums
@@ -123,7 +123,7 @@ def md5sums():
     df_fail = df[df["correct"] == False]
     
     if len(df_fail.axes[0]) > 0:
-        puts(colored.red("ERROR: md5sum of at least one file does not match\nCheck md5sums_failed.csv"))
+        click.secho("ERROR: md5sum of at least one file does not match\nCheck md5sums_failed.csv",fg="red")
         df_fail.to_csv(os.path.join(work_dir,"md5sums_failed.csv"),index=False)
         return(False)
     	
@@ -153,7 +153,7 @@ def checkInPath(check):
         bool_list = [x in path for x in check]
         bool_list_rev = [not x for x in bool_list]
         not_in_path= " ".join((list(compress(check, bool_list_rev))))
-        puts(colored.red(f"ERROR: {not_in_path} not found in $PATH"))
+        click.secho(f"ERROR: {not_in_path} not found in $PATH",fg="red")
         return(False)
 
 
@@ -172,14 +172,14 @@ def fastqc(threads):
     
     #run fastqc
     data_files = os.path.join(work_dir,"raw-data","*.gz")
-    fastqc = f"fastqc --threads {str(threads)} --quiet -o {fastqc_dir} {data_files}"
-    write2log(fastqc)
-    subprocess.run(fastqc, shell = True)
+    fastqc = ["fastqc","--threads",threads,"--quiet","-o",fastqc_dir,data_files]
+    write2log(" ".join(fastqc))
+    subprocess.run(fastqc)
     
     #run multiqc
-    multiqc = f"multiqc -o {fastqc_dir} {fastqc_dir}"
-    write2log(multiqc)
-    subprocess.run(multiqc, shell = True)
+    multiqc = ["multiqc","-o",fastqc_dir,fastqc_dir]
+    write2log(" ".join(multiqc))
+    subprocess.run(multiqc)
 
 
 def logCommandLineArgs():
@@ -297,12 +297,11 @@ def align(threads,mismatch,index):
    
 def count(threads,mismatch,library):
     
-    
     #check if samtools and HISAT2 are in $PATH
     if not checkInPath(["samtools","hisat2"]):
         return()
     
-    
+    print(work_dir)
     #load crispr.yaml
     doc = loadYaml()
     
@@ -316,12 +315,12 @@ def count(threads,mismatch,library):
     if index == "":
         #check if fasta is available to build HISAT2 index
         if fasta != "":
-            puts(colored.orange(f"WARNING: no HISAT2 index found for {library} library, building now..."))
+            click.secho(f"WARNING: no HISAT2 index found for {library} library, building now...",fg="orange")
             index_dir = os.path.dirname(fasta)
             hisat2_build = f""
             
         elif csv != "":
-            puts(colored.orange(f"WARNING: no HISAT2 index or fasta found for {library} library"))
+            click.secho(f"WARNING: no HISAT2 index or fasta found for {library} library",fg="orange")
             print("Generating fasta file from CSV file")
             csv2fasta(csv)
     
@@ -408,7 +407,7 @@ def normalise():
               header = True)
 
 
-def mageck():
+def mageck(cnv):
     pass
 
 
