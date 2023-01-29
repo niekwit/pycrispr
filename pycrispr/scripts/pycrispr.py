@@ -40,10 +40,7 @@ from ..scripts import utils as utils
 def cli(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go,load_library):
     """CRISPR-Cas9 screen analysis"""
     puts(colored.green("CRISPR-Cas9 screen analysis with pycrispr"))
-    
-    #get working directory
-    work_dir = os.getcwd()
-    
+        
     #add sgRNA library info
     if load_library == True:
         utils.loadLibrary()
@@ -53,35 +50,34 @@ def cli(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go,load_
     #run selected functions
     if md5sums == True:
         click.echo("Checking md5sums of fastq files in raw-data/")
-        md5sum_match = utils.md5sums(work_dir)
+        md5sum_match = utils.md5sums()
         if md5sum_match == False:
             click.echo("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
     click.echo(f"{library} library selected")
     click.echo(f"Mismatches allowed: {mismatch}")
     if rename == True:
         click.echo("Renaming fastq files according to rename.txt")
-        utils.rename(work_dir)
+        utils.rename()
     if fastqc == True:
-        click.echo("Running FastQC/Multiqc")
-        utils.fastqc(work_dir,threads)
-    #count sgRNA reads
-    utils.count(work_dir,threads,mismatch,library)
+        utils.fastqc(threads)
+    #align and count sgRNA reads
+    utils.count(threads,mismatch,library)
     
     #join count files
-    utils.join(work_dir,yaml,library)
+    #utils.join(library)
     
     #create normalised count file
-    utils.normalise(work_dir)
+    #utils.normalise()
     
     #apply statistics to count files
     if analysis == "mageck":
-        utils.mageck(work_dir)
+        utils.mageck()
     elif analysis == "bagel2":
-        utils.bagel2(work_dir)
+        utils.bagel2()
 
     #run gene ontology analysis
     if go == True:
-        utils.go(work_dir)
+        utils.go()
 
 
 

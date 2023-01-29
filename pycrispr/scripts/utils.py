@@ -8,17 +8,23 @@ import os
 import hashlib
 import glob
 import subprocess
+import numpy as np
 import pandas as pd
 from clint.textui import colored, puts
 import yaml
 from itertools import compress
+from tqdm.auto import tqdm
+
+
+#set global variables
+script_dir = os.path.abspath(os.path.dirname(__file__))
+work_dir = os.getcwd()
 
 
 def loadLibrary():
     ''' Add sgRNA library to crispr.yaml file
     '''
     print("Adding new sgRNA library to library.yaml")
-    script_dir = os.path.abspath(os.path.dirname(__file__))
     
     #ask user for sgRNA library info
     name = input("sgRNA library name? ")
@@ -65,7 +71,7 @@ def loadLibrary():
             yaml.dump(doc,f)
     
 
-def md5sums(work_dir):
+def md5sums():
     """Checks md5sums of fastqc files
     """
     ###to do:add old file names to df so that this function can still be run after renaming files
@@ -122,7 +128,7 @@ def md5sums(work_dir):
         return(False)
     	
 
-def rename(work_dir):
+def rename():
     file = open(os.path.join(work_dir,"rename.txt"), "r")
     lines = file.readlines()
     count = 0
@@ -136,13 +142,28 @@ def rename(work_dir):
                   os.path.join(work_dir,"raw-data",new_name))
 
 
-def fastqc(work_dir,threads):
+def checkInPath(check):
+    ''' Check if commands in list are set in $PATH
+    '''
+    if type(check) != list: #single command (string)
+        check = [check]
+        
+    path = os.environ["PATH"].lower()
+    if any([x in path for x in check]) == False:
+        bool_list = [x in path for x in check]
+        bool_list_rev = [not x for x in bool_list]
+        not_in_path= " ".join((list(compress(check, bool_list_rev))))
+        puts(colored.red(f"ERROR: {not_in_path} not found in $PATH"))
+        return(False)
+
+
+def fastqc(threads):
     '''Quality control of fastq files
     '''
+    print("Quality control of fastq files using FastQC/MultiQC")
+    
     #check if fastqc is in $PATH
-    path = os.environ["PATH"].lower()
-    if "fastqc" not in path:
-        puts(colored.red("ERROR: fastqc not found in $PATH"))
+    if not checkInPath("fastqc"):
         return()
     
     #create fastqc dir
@@ -152,11 +173,16 @@ def fastqc(work_dir,threads):
     #run fastqc
     data_files = os.path.join(work_dir,"raw-data","*.gz")
     fastqc = f"fastqc --threads {str(threads)} --quiet -o {fastqc_dir} {data_files}"
-    write2log(work_dir,fastqc)
+    write2log(fastqc)
     subprocess.run(fastqc, shell = True)
+    
+    #run multiqc
+    multiqc = f"multiqc -o {fastqc_dir} {fastqc_dir}"
+    write2log(multiqc)
+    subprocess.run(multiqc, shell = True)
 
 
-def logCommandLineArgs(work_dir):
+def logCommandLineArgs():
     args = sys.argv
     args = " ".join(args)
 
@@ -164,7 +190,7 @@ def logCommandLineArgs(work_dir):
         print(args,file = open(os.path.join(work_dir,"commands.log"), "a"))
 
 
-def write2log(work_dir,command,name=""):
+def write2log(command,name=""):
     '''Write bash command to commands.log
     '''
     with open(os.path.join(work_dir,"commands.log"), "a") as file:
@@ -172,7 +198,7 @@ def write2log(work_dir,command,name=""):
         print(*command, sep = "", file = file)
 
 
-def file_exists(file): #check if file exists/is not size zero
+def fileExists(file): #check if file exists/is not size zero
     '''Check if file exists or has 0 file size.
     '''    
 
@@ -187,7 +213,7 @@ def file_exists(file): #check if file exists/is not size zero
 def loadYaml():
     '''Load crispr.yaml as dictionary
     '''
-    script_dir = os.path.abspath(os.path.dirname(__file__))
+    
     yaml_file = os.path.join(script_dir,"crispr.yaml")
     
     with open(yaml_file) as f:
@@ -195,22 +221,125 @@ def loadYaml():
     
     return(doc)
 
-def count(work_dir,threads,mismatch,library):
+
+def csv2fasta(csv):
+    ''' Converts CSV file to fasta format
+    '''
+    df_CSV = pd.read_csv(csv)
+    line_number_fasta = len(df_CSV) * 2
+
+    df = pd.DataFrame(columns = ["column"],index = np.arange(line_number_fasta))
+
+    #create fasta df
+    df["column"] = df_CSV.stack().reset_index(drop = True)
+    df.iloc[0::2, :] = ">"+df.iloc[0::2, :]
+    '''
+    library_name = os.path.basename(csv)
+    library_name = library_name.replace(".csv","")
+    fasta_base = library_name + ".fasta"
+    fasta_file = os.path.join(script_dir,"index",library_name,fasta_base)
+    os.makedirs(os.path.join(script_dir,"index",library_name),
+                exist_ok = True)
+    df.to_csv(fasta_file,index = False, 
+              header = False)
+
+    #add new CRISPR library and fasta file location to library.yaml
+    yaml_list = ["clip_seq","fasta","index_path","read_mod","sg_length","species"]
+    with open(os.path.join(script_dir, "crispr.yaml")) as f:
+        doc = yaml.safe_load(f)
+        doc[library_name] = {}
+        for i in yaml_list:
+            doc[library_name][i] = ""
+        doc[library_name]["fasta"] = fasta_file
+        with open(os.path.join(script_dir, "yaml" , "crispr-library.yaml"), "w") as f:
+            yaml.dump(doc,f)
+
+    #exit message
+    sys.exit("Fasta file created and added to library.yaml\nPlease provide more CRISPR library information in this file before first run.")
+    '''
+
+
+def trim(threads,sg_length):
+    ''' Remove vector sequence from reads
+    '''
+    files = glob.glob(work_dir,"raw-data","*gz")
+    for file in files:
+        base_file = os.path.basename(file)
+        trimmed = file.split(".",1)[0] + "_trimmed.fq.gz"
+        tqdm.write(f"Removing vector sequence from {base_file}")
+        cutadapt = f"cutadapt -j {threads} --quiet --quality-base 33 -l {sg_length} -o {trimmed} {file} 2>> stdout.log"
+        if not fileExists(trimmed):
+            write2log(cutadapt)
+            subprocess.run(cutadapt, shell = True)
+
+
+def align(threads,mismatch,index):
+    ''' Align and count trimmed reads with HISAT2
+    '''
+    os.makedirs(os.path.join(work_dir,"count"),exist_ok=True)
+    
+    files = glob.glob(work_dir,"raw-data","*_trimmed.fq.gz")
+    for file in files:
+        base_file = os.path.basename(file)
+        count_file = os.path.join(work_dir,"count",base_file.replace("_trimmed.fq.gz","guidecounts.txt"))
+        tqdm.write(f"Aligning {base_file}")
+        if not fileExists(count_file):
+            bash = ["sed", "'/XS:/d'", "|", "cut", "-f3","|", "sort", "|", "uniq", 
+                    "-c", "|", "sed", '"s/^ *//"', "|", "sed", "'1d'", ">" ]
+            hisat2 = ["zcat", file,"|", "hisat2", 
+                       "--no-hd", "-p", threads, "-t", "-N", mismatch, "-x", index, 
+                       "-", "2>>", "stdout.log", "|"] 
+            hisat2.extend(bash)
+            hisat2.append(count_file)
+            write2log(" ".join(hisat2))
+            subprocess.run(hisat2)
+    
+   
+def count(threads,mismatch,library):
+    
+    
     #check if samtools and HISAT2 are in $PATH
-    check = ["samtools","hisat2"]
-    path = os.environ["PATH"].lower()
-    if any([x in path for x in check]) == False:
-        bool_list = [x in path for x in check]
-        bool_list_rev = [not x for x in bool_list]
-        not_in_path= " ".join((list(compress(check, bool_list_rev))))
-        puts(colored.red(f"ERROR: {not_in_path} not found in $PATH"))
+    if not checkInPath(["samtools","hisat2"]):
         return()
+    
     
     #load crispr.yaml
     doc = loadYaml()
+    
+    #load settings
+    index = doc[library]["index"]
+    fasta = doc[library]["fasta"]
+    csv = doc[library]["csv"]
+    sg_length = doc[library]["sg_length"]
+    
+    #check if index is available
+    if index == "":
+        #check if fasta is available to build HISAT2 index
+        if fasta != "":
+            puts(colored.orange(f"WARNING: no HISAT2 index found for {library} library, building now..."))
+            index_dir = os.path.dirname(fasta)
+            hisat2_build = f""
+            
+        elif csv != "":
+            puts(colored.orange(f"WARNING: no HISAT2 index or fasta found for {library} library"))
+            print("Generating fasta file from CSV file")
+            csv2fasta(csv)
+    
+    else:
+        #remove vector sequences from reads
+        trim(threads,sg_length)
+        
+        #align and count reads
+        align(threads,mismatch,index)
 
 
-def join(work_dir,yaml,library):
+def join(library):
+    ''' Join count files to create MAGeCK/BAGEL2 input
+    '''
+    #load crispr.yaml
+    doc = loadYaml()
+    
+    #get all count files
     file_list = glob.glob(os.path.join(work_dir,"count","*guidecounts.txt"))
     
     #dictionary to store all guide counts
@@ -218,16 +347,14 @@ def join(work_dir,yaml,library):
     
     for file in file_list:
        #add counts to counts dict
-       df = pd.read_csv(file,
-                        sep=" ",
-                        header = None)
+       df = pd.read_csv(file,sep=" ",header = None)
        key = os.path.basename(file).replace(".guidecounts.txt", "")
        df.columns = [key, "sgRNA"]
        df[key].astype(int)
        counts.update({key:df})
        
     #prepare data frame for left join
-    fasta = yaml[library]["fasta"]
+    fasta = doc[library]["fasta"]
 
     df = pd.read_csv(fasta, header = None)
     df.columns = ["sgRNA"]
@@ -240,7 +367,7 @@ def join(work_dir,yaml,library):
                                        n = 1,
                                        expand = True)[0]
     
-    #perform left join
+    #perform left join on count files
     for key, value in counts.items():
         df = pd.merge(df, value, on='sgRNA', how='left')
         
@@ -266,7 +393,7 @@ def join(work_dir,yaml,library):
               index = False)
 
 
-def normalise(work_dir):
+def normalise():
     '''Normalise counts-aggregated.tsv to total read count per sample
     '''
     
@@ -281,15 +408,15 @@ def normalise(work_dir):
               header = True)
 
 
-def mageck(work_dir):
+def mageck():
     pass
 
 
-def bagel2(work_dir):
+def bagel2():
     pass
 
 
-def go(work_dir):
+def go():
     pass
 
 
