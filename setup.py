@@ -12,8 +12,7 @@ setup(
     packages=find_packages(),
     install_requires=['seaborn','matplotlib',
                       'numpy','pandas','pyyaml',
-                      'tqdm','gseapy','clint',
-                      'cutadapt', 'multiqc','Click'
+                      'tqdm','gseapy','cutadapt', 'multiqc','Click'
                       ],
     classifiers=[
         'Development Status :: 1 - Planning',

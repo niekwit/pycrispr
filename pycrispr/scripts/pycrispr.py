@@ -3,39 +3,14 @@
 import subprocess
 import os
 import click
-import sys
-import hashlib
-import glob
-import numpy as np
-import pandas as pd
 import yaml
-from itertools import compress
-from tqdm.auto import tqdm
 
+from ..scripts import utils as utils
+
+#global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
 
-####generic functions
-def write2log(command,name=""):
-    '''Write bash command to commands.log
-    '''
-    with open(os.path.join(work_dir,"commands.log"), "a") as file:
-        file.write(name)
-        print(*command, sep = "", file = file)
-
-def checkInPath(check):
-    ''' Check if commands in list are set in $PATH
-    '''
-    if type(check) != list: #single command (string)
-        check = [check]
-        
-    path = os.environ["PATH"].lower()
-    if any([x in path for x in check]) == False:
-        bool_list = [x in path for x in check]
-        bool_list_rev = [not x for x in bool_list]
-        not_in_path= " ".join((list(compress(check, bool_list_rev))))
-        click.secho(f"ERROR: {not_in_path} not found in $PATH",fg="red")
-        return(False)
 
 ####command line parser
 @click.group()
@@ -73,7 +48,40 @@ def show_libs():
 def add_lib(name,index,fasta,csv,sg_length,species):
     ''' Add sgRNA library to crispr.yaml
     '''
-    pass
+    #create dictionary keys for yaml dump
+    yaml_keys = ["fasta","index","csv","sg_length","species"]
+    
+    #write/create crispr.yaml file
+    yaml_file = os.path.join(script_dir,"crispr.yaml")
+    if not os.path.exists(yaml_file):
+        #no pre-existing yaml file so start with dict to create one
+        doc = {}
+        doc[name] = {}
+        doc[name]["index"] = index
+        doc[name]["fasta"] = fasta
+        doc[name]["csv"] = csv
+        doc[name]["sg_length"] = sg_length
+        doc[name]["species"] = species
+        
+        #write dictionary to crispr.yaml
+        with open(yaml_file, "w") as f:
+            yaml.dump(doc,f)
+    else:
+        #open file as dictionary and add library info
+        with open(yaml_file) as f:
+            doc = yaml.safe_load(f)
+            doc[name] = {}
+            for i in yaml_keys:
+                doc[name][i] = ""
+            doc[name]["index"] = index
+            doc[name]["fasta"] = fasta
+            doc[name]["csv"] = csv
+            doc[name]["sg_length"] = sg_length
+            doc[name]["species"] = species
+    
+        #write appended dictionary with all sgRNA library info to crispr.yaml
+        with open(yaml_file, "w") as f:
+            yaml.dump(doc,f)
 
 @click.command(name='analysis')
 @click.option("--md5sums", is_flag=True, show_default=True, default=False,
@@ -84,8 +92,8 @@ def add_lib(name,index,fasta,csv,sg_length,species):
               help="Rename fastq files according to rename.txt")
 @click.option("-t","--threads", default=1, type=int, 
               help="Number of CPU threads used during analysis")
-@click.option("-l","--library", 
-                  help="CRISPR-Cas9 library")
+@click.option("-l","--library",
+              help="CRISPR-Cas9 library")
 @click.option("-m","--mismatch", default=0, show_default=True, type=int, 
               help="Number of mismatches allowed during alignment")
 @click.option("-a","--analysis", default="mageck", show_default=True, 
@@ -94,8 +102,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 @click.option("-c","--cnv", default=None, show_default=True, 
               type=str,
               help="Apply CNV correction for MAGeCK/BAGEL2 for given cell line")
-@click.option("-f","--fdr", default=0.25, show_default=True, 
-              type=float,
+@click.option("-f","--fdr", default=0.25, show_default=True,type=float,
               help="FDR cutoff for MAGeCK")
 @click.option("--go", is_flag=True, show_default=True, default=False,
               help="Apply gene ontology analysis to MAGeCK and/or BAGEL2 results")
@@ -110,40 +117,21 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go)
         os.makedirs(os.path.join(work_dir,"mageck"),exist_ok=True)
     
     #run selected functions
-    '''
-    if md5sums == True:
+    
+    if md5sums:
         click.echo("Checking md5sums of fastq files in raw-data/")
         md5sum_match = utils.md5sums()
         if md5sum_match == False:
             click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
     click.echo(f"{library} library selected")
     click.echo(f"Mismatches allowed: {mismatch}")
-    if rename == True:
-        click.echo("Renaming fastq files according to rename.txt")
+    
+    if rename:
         utils.rename()
-    '''
+    
     if fastqc:
-        click.echo("Quality control of fastq files using FastQC/MultiQC")
-        
-        #check if fastqc is in $PATH
-        if not checkInPath("fastqc"):
-            return()
-        
-        #create fastqc dir
-        fastqc_dir = os.path.join(work_dir,"fastqc")
-        os.makedirs(fastqc_dir,exist_ok = True)
-        
-        #run fastqc
-        data_files = os.path.join(work_dir,"raw-data","*.gz")
-        fastqc = ["fastqc","--threads",threads,"--quiet","-o",fastqc_dir,data_files]
-        write2log(" ".join(fastqc))
-        subprocess.run(fastqc)
-        
-        #run multiqc
-        multiqc = ["multiqc","-o",fastqc_dir,fastqc_dir]
-        write2log(" ".join(multiqc))
-        subprocess.run(multiqc)
-    '''
+       utils.fastqc(threads)
+    
     #align and count sgRNA reads
     utils.count(threads,mismatch,library)
     
@@ -160,9 +148,9 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go)
         utils.bagel2()
 
     #run gene ontology analysis
-    if go == True:
+    if go:
         utils.go()
-    '''
+    
 #add subparsers
 cli.add_command(show_libs)
 cli.add_command(add_lib)

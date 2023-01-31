@@ -21,56 +21,6 @@ script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
 
 
-def loadLibrary():
-    ''' Add sgRNA library to crispr.yaml file
-    '''
-    print("Adding new sgRNA library to library.yaml")
-    
-    #ask user for sgRNA library info
-    name = input("sgRNA library name? ")
-    index = input("sgRNA library HISAT2 index path (if unavailable leave blank and enter fasta file path in next prompt)? ")
-    fasta = input("sgRNA library fasta file path (this will be used to create the HISAT2 index. If not available leave blank and enter the path to a csv file with sgRNA name and sequence in two separate column)? ")
-    csv = input("CSV file path (sgRNA name and sequence in separate columns)? ")
-    #puts(colored.red("ERROR: insufficient information for sgRNA library"))
-    sg_length = input("sgRNA length (if sgRNA library contains sgRNAs with varying lengths, enter the shortest length)? ")
-    species = input("Species (required for gene ontology analysis)? ")
-    
-    #create dictionary keys for yaml dump
-    yaml_keys = ["fasta","index","csv","sg_length","species"]
-    
-    #write/create crispr.yaml file
-    yaml_file = os.path.join(script_dir,"crispr.yaml")
-    if not os.path.exists(yaml_file):
-        #no pre-existing yaml file so start with dict to create one
-        doc = {}
-        doc[name] = {}
-        doc[name]["index"] = index
-        doc[name]["fasta"] = fasta
-        doc[name]["csv"] = csv
-        doc[name]["sg_length"] = sg_length
-        doc[name]["species"] = species
-        
-        #write dictionary to crispr.yaml
-        with open(yaml_file, "w") as f:
-            yaml.dump(doc,f)
-    else:
-        #open file as dictionary and add library info
-        with open(yaml_file) as f:
-            doc = yaml.safe_load(f)
-            doc[name] = {}
-            for i in yaml_keys:
-                doc[name][i] = ""
-            doc[name]["index"] = index
-            doc[name]["fasta"] = fasta
-            doc[name]["csv"] = csv
-            doc[name]["sg_length"] = sg_length
-            doc[name]["species"] = species
-    
-        #write appended dictionary with all sgRNA library info to crispr.yaml
-        with open(yaml_file, "w") as f:
-            yaml.dump(doc,f)
-    
-
 def md5sums():
     """Checks md5sums of fastqc files
     """
@@ -129,7 +79,11 @@ def md5sums():
     	
 
 def rename():
-    file = open(os.path.join(work_dir,"rename.txt"), "r")
+    ''' Renames fastq files according to rename.csv
+    '''
+    click.echo("Renaming fastq files according to rename.csv")
+    
+    file = open(os.path.join(work_dir,"rename.csv"), "r")
     lines = file.readlines()
     count = 0
     for line in lines: #removes newline characters
@@ -160,10 +114,11 @@ def checkInPath(check):
 def fastqc(threads):
     '''Quality control of fastq files
     '''
-    print("Quality control of fastq files using FastQC/MultiQC")
+    click.echo("Quality control of fastq files using FastQC/MultiQC")
     
     #check if fastqc is in $PATH
     if not checkInPath("fastqc"):
+        click.secho("ERROR: fastqc not found in $PATH",fg="red")
         return()
     
     #create fastqc dir
@@ -271,6 +226,10 @@ def trim(threads,sg_length):
         if not fileExists(trimmed):
             write2log(cutadapt)
             subprocess.run(cutadapt, shell = True)
+
+
+def buildIndex():
+    pass
 
 
 def align(threads,mismatch,index):
