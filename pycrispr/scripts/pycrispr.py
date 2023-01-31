@@ -17,7 +17,8 @@ work_dir = os.getcwd()
 def cli():
     """CRISPR-Cas9 screen analysis pipeline
     """
-        
+    utils.logCommandLineArgs()
+    
 @click.command(name='version')
 def version():
     """Report the current build and version number
@@ -29,8 +30,13 @@ def show_libs():
     ''' Displays which sgRNA libraries have been written to crispr.yaml
     '''
     lib = os.path.join(script_dir,"crispr.yaml")
-    click.secho("The following sgRNA libraries are available in crispr.yaml:",fg="green")
-    subprocess.run(["cat", lib])
+    if os.path.exists(lib):
+        click.secho("The following sgRNA libraries are available in crispr.yaml:",fg="green")
+        subprocess.run(["cat", lib])
+    else:
+        click.echo("WARNING: no sgRNA library has been added yet")
+        click.echo("Please run `pycrispr add-lib`")
+        return()
 
 @click.command(name='add-lib')
 @click.option("-n","--name", required=True,
@@ -109,6 +115,11 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
+    click.secho("Running CRISPR-Cas9 screen analysis with pycrispr",fg="green")
+    
+    threads = str(threads)
+    mismatch = str(mismatch)
+    
     #create output dirs
     os.makedirs(os.path.join(work_dir,"count"),exist_ok=True)
     if analysis == "mageck":

@@ -21,6 +21,16 @@ script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
 
 
+def logCommandLineArgs():
+    args = sys.argv
+    args = " ".join(args)
+
+    if "-h" not in args:
+            if "--help" not in args:
+                print(args,
+                      file = open(os.path.join(work_dir,"commands.log"), "a"))
+
+
 def md5sums():
     """Checks md5sums of fastqc files
     """
@@ -109,6 +119,8 @@ def checkInPath(check):
         not_in_path= " ".join((list(compress(check, bool_list_rev))))
         click.secho(f"ERROR: {not_in_path} not found in $PATH",fg="red")
         return(False)
+    else:
+        return(True)
 
 
 def fastqc(threads):
@@ -126,8 +138,9 @@ def fastqc(threads):
     os.makedirs(fastqc_dir,exist_ok = True)
     
     #run fastqc
-    data_files = os.path.join(work_dir,"raw-data","*.gz")
-    fastqc = ["fastqc","--threads",threads,"--quiet","-o",fastqc_dir,data_files]
+    data_files = glob.glob(os.path.join(work_dir,"raw-data","*.gz"))
+    fastqc = ["fastqc","--threads",threads,"--quiet","-o",fastqc_dir]
+    fastqc.extend(data_files)
     write2log(" ".join(fastqc))
     subprocess.run(fastqc)
     
@@ -217,7 +230,8 @@ def csv2fasta(csv):
 def trim(threads,sg_length):
     ''' Remove vector sequence from reads
     '''
-    files = glob.glob(work_dir,"raw-data","*gz")
+    files = glob.glob(os.path.join(work_dir,"raw-data","*.gz"))
+    files = [x for x in files if not "trimmed" in x]
     for file in files:
         base_file = os.path.basename(file)
         trimmed = file.split(".",1)[0] + "_trimmed.fq.gz"
@@ -237,14 +251,14 @@ def align(threads,mismatch,index):
     '''
     os.makedirs(os.path.join(work_dir,"count"),exist_ok=True)
     
-    files = glob.glob(work_dir,"raw-data","*_trimmed.fq.gz")
+    files = glob.glob(os.path.join(work_dir,"raw-data","*_trimmed.fq.gz"))
     for file in files:
         base_file = os.path.basename(file)
-        count_file = os.path.join(work_dir,"count",base_file.replace("_trimmed.fq.gz","guidecounts.txt"))
+        count_file = os.path.join(work_dir,"count",base_file.replace("_trimmed.fq.gz",".guidecounts.txt"))
         tqdm.write(f"Aligning {base_file}")
         if not fileExists(count_file):
             bash = ["sed", "'/XS:/d'", "|", "cut", "-f3","|", "sort", "|", "uniq", 
-                    "-c", "|", "sed", '"s/^ *//"', "|", "sed", "'1d'", ">" ]
+                    "-c", "|", "sed", '"s/^ *//"', "|", "sed", "'1d'", ">" ] ###re-evaluate this command!!!
             hisat2 = ["zcat", file,"|", "hisat2", 
                        "--no-hd", "-p", threads, "-t", "-N", mismatch, "-x", index, 
                        "-", "2>>", "stdout.log", "|"] 
@@ -257,10 +271,9 @@ def align(threads,mismatch,index):
 def count(threads,mismatch,library):
     
     #check if samtools and HISAT2 are in $PATH
-    if not checkInPath(["samtools","hisat2"]):
+    if not checkInPath("hisat2"):
         return()
     
-    print(work_dir)
     #load crispr.yaml
     doc = loadYaml()
     
@@ -274,12 +287,12 @@ def count(threads,mismatch,library):
     if index == "":
         #check if fasta is available to build HISAT2 index
         if fasta != "":
-            click.secho(f"WARNING: no HISAT2 index found for {library} library, building now...",fg="orange")
+            click.secho(f"WARNING: no HISAT2 index found for {library} library, building now...",fg="red")
             index_dir = os.path.dirname(fasta)
             hisat2_build = f""
             
         elif csv != "":
-            click.secho(f"WARNING: no HISAT2 index or fasta found for {library} library",fg="orange")
+            click.secho(f"WARNING: no HISAT2 index or fasta found for {library} library",fg="red")
             print("Generating fasta file from CSV file")
             csv2fasta(csv)
     
