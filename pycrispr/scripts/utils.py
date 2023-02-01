@@ -19,7 +19,7 @@ from tqdm.auto import tqdm
 #set global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
-
+stdout_log = os.path.join(work_dir,"stdout.log")
 
 def logCommandLineArgs():
     args = sys.argv
@@ -257,21 +257,26 @@ def align(threads,mismatch,index):
         count_file = os.path.join(work_dir,"count",base_file.replace("_trimmed.fq.gz",".guidecounts.txt"))
         tqdm.write(f"Aligning {base_file}")
         if not fileExists(count_file):
-            bash = ["sed", "'/XS:/d'", "|", "cut", "-f3","|", "sort", "|", "uniq", 
-                    "-c", "|", "sed", '"s/^ *//"', "|", "sed", "'1d'", ">" ] ###re-evaluate this command!!!
-            hisat2 = ["zcat", file,"|", "hisat2", 
-                       "--no-hd", "-p", threads, "-t", "-N", mismatch, "-x", index, 
-                       "-", "2>>", "stdout.log", "|"] 
-            hisat2.extend(bash)
-            hisat2.append(count_file)
+            '''
+            1. Align with HISAT2 to index
+            2. Remove all unmapped reads using samtools
+            3. Select third field of SAM file that contains sgRNA name using awk
+            4. Sort sgRNA names
+            5. Count unique sgRNA names
+            6. Remove leading white space using sed
+            '''
+            hisat2 = ["zcat",file,"|","hisat2","-p",threads,"-t","-N",mismatch,"-x",index, 
+            "-","2>>",stdout_log,"|","samtools","view","-@",threads,"-F","4","|","awk",
+            "'{print $3}'","|","sort","|","uniq","-c","|","sed","'s/^ *//'",">",count_file]
             write2log(" ".join(hisat2))
-            subprocess.run(hisat2)
+            subprocess.run(f'echo "{base_file}" >> {stdout_log}',shell=True)
+            subprocess.run(" ".join(hisat2),shell=True)
     
    
 def count(threads,mismatch,library):
     
     #check if samtools and HISAT2 are in $PATH
-    if not checkInPath("hisat2"):
+    if not checkInPath(["hisat2","samtools"]):
         return()
     
     #load crispr.yaml
@@ -307,6 +312,8 @@ def count(threads,mismatch,library):
 def join(library):
     ''' Join count files to create MAGeCK/BAGEL2 input
     '''
+    click.echo("Creating count table for MAGeCK/BAGEL2")
+    
     #load crispr.yaml
     doc = loadYaml()
     
@@ -334,17 +341,13 @@ def join(library):
     df = df.reset_index(drop = True)
     df["sgRNA"] = df["sgRNA"].str.replace(">", "")
     
-    df["gene"] = df["sgRNA"].str.split(pat = "_",
-                                       n = 1,
-                                       expand = True)[0]
+    df["gene"] = df["sgRNA"].str.split(pat = "_",n = 1,expand = True)[0]
     
     #perform left join on count files
     for key, value in counts.items():
         df = pd.merge(df, value, on='sgRNA', how='left')
         
-    df["sgRNA"] = df["sgRNA"].str.split(pat = "_",
-                                   n = 1,
-                                   expand = True)[1]
+    df["sgRNA"] = df["sgRNA"].str.split(pat = "_",n = 1,expand = True)[1]
     
     #replace nan with zero
     df = df.fillna(0)
@@ -356,7 +359,7 @@ def join(library):
     for i in index_range:
         index_list.append(i)
         
-    df.iloc[:, index_list] = df.iloc[:, index_list].astype(int)
+    df[df.columns[index_list]] = df[df.columns[index_list]].astype(int)
     
     #save data frame to file
     df.to_csv(os.path.join(work_dir,"count",'counts-aggregated.tsv'), 
@@ -367,13 +370,16 @@ def join(library):
 def normalise():
     '''Normalise counts-aggregated.tsv to total read count per sample
     '''
+    click.echo("Creating normalised count table")
+    
     
     df = pd.read_table(os.path.join(work_dir,"count","counts-aggregated.tsv"))
     column_range = range(2,len(df.columns))
     for i in column_range:
-        column_sum = df.iloc[:,i].sum()
-        df.iloc[:,i] = df.iloc[:,i] / column_sum * 1E8
-        df.iloc[:,i] = df.iloc[:,i].astype(int)
+        column_sum = df[df.columns[i]].sum()
+        df[df.columns[i]] = df[df.columns[i]] / column_sum * 1E8
+        
+        df[df.columns[i]] = df[df.columns[i]].astype(int)
     df.to_csv(os.path.join(work_dir,"count","counts-aggregated-normalised.csv"),
               index = False,
               header = True)

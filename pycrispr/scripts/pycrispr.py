@@ -115,7 +115,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
-    click.secho("Running CRISPR-Cas9 screen analysis with pycrispr",fg="green")
+    click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
     
     threads = str(threads)
     mismatch = str(mismatch)
