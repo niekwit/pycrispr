@@ -2,7 +2,7 @@
 
 ''' Functions for pycrispr
 '''
-
+import shutil
 import sys
 import os
 import hashlib
@@ -111,14 +111,33 @@ def checkInPath(check):
     '''
     if type(check) != list: #single command (string)
         check = [check]
-        
+    
+    #make sure everything is lower case
+    check = [x.lower() for x in check]
+    
+    #get $PATH
     path = os.environ["PATH"].lower()
+    
+    #check if commands are in $PATH and if not show which ones
     if any([x in path for x in check]) == False:
         bool_list = [x in path for x in check]
         bool_list_rev = [not x for x in bool_list]
-        not_in_path= " ".join((list(compress(check, bool_list_rev))))
-        click.secho(f"ERROR: {not_in_path} not found in $PATH",fg="red")
-        return(False)
+        not_in_path= list(compress(check, bool_list_rev))
+        
+        #not in $PATH but but check if in dir such as /home/user/bin that is in $PATH
+        not_in_path_final = []
+        for n in not_in_path:
+            try:
+                os.path.exists(shutil.which(n))
+            except TypeError:
+                not_in_path_final.append(n)
+                
+        if len(not_in_path_final) != 0:
+            not_in_path_final = " & ".join(not_in_path_final)
+            click.secho(f"ERROR: {not_in_path_final} not found in $PATH",fg="red")
+            return(False)
+        else:
+            return(True)
     else:
         return(True)
 
@@ -232,12 +251,13 @@ def trim(threads,sg_length):
     '''
     files = glob.glob(os.path.join(work_dir,"raw-data","*.gz"))
     files = [x for x in files if not "trimmed" in x]
-    for file in files:
-        base_file = os.path.basename(file)
+    click.echo("Trimming vector sequence from:")
+    for file in tqdm(files, position = 0, leave = True):
         trimmed = file.split(".",1)[0] + "_trimmed.fq.gz"
-        tqdm.write(f"Removing vector sequence from {base_file}")
-        cutadapt = f"cutadapt -j {threads} --quiet --quality-base 33 -l {sg_length} -o {trimmed} {file} 2>> stdout.log"
         if not fileExists(trimmed):
+            base_file = os.path.basename(file)
+            tqdm.write(base_file)
+            cutadapt = f"cutadapt -j {threads} --quiet --quality-base 33 -l {sg_length} -o {trimmed} {file} 2>> stdout.log"
             write2log(cutadapt)
             subprocess.run(cutadapt, shell = True)
 
@@ -252,10 +272,11 @@ def align(threads,mismatch,index):
     os.makedirs(os.path.join(work_dir,"count"),exist_ok=True)
     
     files = glob.glob(os.path.join(work_dir,"raw-data","*_trimmed.fq.gz"))
-    for file in files:
+    click.echo("Aligning samples:")
+    for file in tqdm(files, position = 0, leave = True):
         base_file = os.path.basename(file)
         count_file = os.path.join(work_dir,"count",base_file.replace("_trimmed.fq.gz",".guidecounts.txt"))
-        tqdm.write(f"Aligning {base_file}")
+        
         if not fileExists(count_file):
             '''
             1. Align with HISAT2 to index
@@ -265,6 +286,7 @@ def align(threads,mismatch,index):
             5. Count unique sgRNA names
             6. Remove leading white space using sed
             '''
+            tqdm.write(base_file)
             hisat2 = ["zcat",file,"|","hisat2","-p",threads,"-t","-N",mismatch,"-x",index, 
             "-","2>>",stdout_log,"|","samtools","view","-@",threads,"-F","4","|","awk",
             "'{print $3}'","|","sort","|","uniq","-c","|","sed","'s/^ *//'",">",count_file]
@@ -386,9 +408,41 @@ def normalise():
 
 
 def mageck(cnv):
-    pass
-
-
+    '''Statistical analysis of sgRNA counts with MAGeCK
+    '''
+    #check if MAGeCK is in $PATH
+    if not checkInPath("mageck"):
+        return()
+    
+    #check if stats.txt is available
+    stats = os.path.join(work_dir,"stats.csv")
+    if not os.path.exists(stats):
+        click.secho("ERROR: stats.txt not found (MAGeCK comparisons)",fg="red")
+        return()
+    
+    #load stats.txt
+    df = pd.read_csv(os.path.join(work_dir,"stats.csv"))
+    
+    #run MAGeCK for each line in df
+    click.echo("Running MAGeCK for:")
+    for index,row in tqdm(df.iterrows(), position = 0, leave = True):
+        samples = row.tolist()
+        test = samples[0]
+        control = samples [1]
+        count_table = os.path.join(work_dir,"count","counts-aggregated.tsv")
+        exp = f"{test}_vs_{control}"
+        tqdm.write(exp.replace("_"," "))
+        prefix=os.path.join(work_dir,"mageck",exp,exp)
+        
+        os.makedirs(os.path.join(work_dir,"mageck",exp), exist_ok=True)
+        
+        #create MAGeCK command
+        mageck = f"mageck test -k {count_table} -t {test} -c {control} -n {prefix} 2>> {stdout_log}"
+        
+        #run command
+        write2log(mageck)
+        subprocess.run(mageck,shell=True)
+        
 def bagel2():
     pass
 
