@@ -4,12 +4,15 @@ import subprocess
 import os
 import click
 import yaml
+import timeit
+import time
 
 from ..scripts import utils as utils
 
 #global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
+version = "0.1"
 
 
 ####command line parser
@@ -23,7 +26,7 @@ def cli():
 def version():
     """Report the current build and version number
     """
-    click.echo()
+    click.echo(version)
 
 @click.command(name='show-libs')
 def show_libs():
@@ -115,6 +118,9 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
+    #start run timer
+    start = timeit.default_timer()
+    
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
     
     threads = str(threads)
@@ -161,6 +167,13 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go)
     #run gene ontology analysis
     if go:
         utils.go()
+    
+    #print total run time
+    stop = timeit.default_timer()
+    total_time = stop - start
+    ty_res = time.gmtime(total_time)
+    res = time.strftime("%H:%M:%S",ty_res)
+    print(f"Total run time: {res}")
     
 #add subparsers
 cli.add_command(show_libs)
