@@ -20,8 +20,8 @@ This command installs **pycrispr** and all the Python dependencies.
     * `FastQC <https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>`_ (optional)
     * `HISAT2 <http://daehwankimlab.github.io/hisat2/>`_
     * `samtools <https://www.htslib.org>`_
-    * `MAGeCK (optional) <https://sourceforge.net/p/mageck/wiki/Home/>`_
-    * `BAGEL2 (optional) <https://github.com/hart-lab/bagel>`_
+    * `MAGeCK <https://sourceforge.net/p/mageck/wiki/Home/>`_ (optional)
+    * `BAGEL2<https://github.com/hart-lab/bagel>`_ (optional)
     
     These dependencies should be set in $PATH or in a directory that is in $PATH, such as /usr/local/bin. For instructions to add a directory to your $PATH, click `here <https://stackoverflow.com/questions/14637979/how-to-permanently-set-path-on-linux-unix>`_
 
