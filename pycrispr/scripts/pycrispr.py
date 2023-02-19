@@ -151,7 +151,7 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go)
     
     #apply statistics to count files
     if analysis == "mageck":
-        utils.mageck(cnv)
+        utils.mageck()
     elif analysis == "bagel2":
         utils.bagel2()
     

@@ -408,7 +408,7 @@ def normalise():
               header = True)
 
 
-def mageck(cnv):
+def mageck():
     '''Statistical analysis of sgRNA counts with MAGeCK
     '''
     #check if MAGeCK is in $PATH
