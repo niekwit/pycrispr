@@ -106,7 +106,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
               type=click.Choice(["mageck","bagel2"]),
               help="Statistical analysis with MAGeCK or BAGEL2")
 
-def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
+def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
     #start run timer
