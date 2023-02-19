@@ -12,7 +12,7 @@ from ..scripts import utils as utils
 #global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
-version = "0.1"
+version = "1.0"
 
 
 ####command line parser
@@ -45,15 +45,14 @@ def show_libs():
 @click.option("-n","--name", required=True,
               help="Library name")
 @click.option("-i","--index", required=True,
-              help="HISAT2 path")
+              help="HISAT2 index path")
 @click.option("-f","--fasta", required=True,
               help="Fasta file path")
 @click.option("-c","--csv", required=True,
               help="CSV file path")
 @click.option("--sg-length", required=True, type=int,
               help="sgRNA length")
-@click.option("--species", required=True, 
-              help="Target genome")
+
 def add_lib(name,index,fasta,csv,sg_length,species):
     ''' Add sgRNA library to crispr.yaml
     '''
@@ -70,7 +69,6 @@ def add_lib(name,index,fasta,csv,sg_length,species):
         doc[name]["fasta"] = fasta
         doc[name]["csv"] = csv
         doc[name]["sg_length"] = sg_length
-        doc[name]["species"] = species
         
         #write dictionary to crispr.yaml
         with open(yaml_file, "w") as f:
@@ -86,7 +84,6 @@ def add_lib(name,index,fasta,csv,sg_length,species):
             doc[name]["fasta"] = fasta
             doc[name]["csv"] = csv
             doc[name]["sg_length"] = sg_length
-            doc[name]["species"] = species
     
         #write appended dictionary with all sgRNA library info to crispr.yaml
         with open(yaml_file, "w") as f:
@@ -98,7 +95,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 @click.option("--fastqc", is_flag=True, show_default=True, default=False,
               help="Quality control of fastq files")
 @click.option("-r", "--rename", is_flag=True, show_default=True, default=False, 
-              help="Rename fastq files according to rename.txt")
+              help="Rename fastq files according to rename.csv")
 @click.option("-t","--threads", default=1, type=int, 
               help="Number of CPU threads used during analysis")
 @click.option("-l","--library",
@@ -108,13 +105,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
 @click.option("-a","--analysis", default="mageck", show_default=True, 
               type=click.Choice(["mageck","bagel2"]),
               help="Statistical analysis with MAGeCK or BAGEL2")
-@click.option("-c","--cnv", default=None, show_default=True, 
-              type=str,
-              help="Apply CNV correction for MAGeCK/BAGEL2 for given cell line")
-@click.option("-f","--fdr", default=0.25, show_default=True,type=float,
-              help="FDR cutoff for MAGeCK")
-@click.option("--go", is_flag=True, show_default=True, default=False,
-              help="Apply gene ontology analysis to MAGeCK and/or BAGEL2 results")
+
 def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
@@ -163,10 +154,6 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go)
         utils.mageck(cnv)
     elif analysis == "bagel2":
         utils.bagel2()
-
-    #run gene ontology analysis
-    if go:
-        utils.go()
     
     #print total run time
     stop = timeit.default_timer()

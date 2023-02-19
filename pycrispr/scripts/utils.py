@@ -21,6 +21,7 @@ script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
 stdout_log = os.path.join(work_dir,"stdout.log")
 
+
 def logCommandLineArgs():
     args = sys.argv
     args = " ".join(args)
@@ -447,8 +448,6 @@ def bagel2():
     pass
 
 
-def go():
-    pass
 
 
 
