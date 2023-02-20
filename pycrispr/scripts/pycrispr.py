@@ -41,6 +41,14 @@ def show_libs():
         click.echo("Please run `pycrispr add-lib`")
         return()
 
+@click.command(name='md5sums')
+def md5sums():
+	click.echo("Checking md5sums of fastq files in raw-data/")
+	md5sum_match = utils.md5sums()
+	if not md5sum_match:
+		click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
+		return()
+
 @click.command(name='add-lib')
 @click.option("-n","--name", required=True,
               help="Library name")
@@ -125,12 +133,7 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis):
         os.makedirs(os.path.join(work_dir,"mageck"),exist_ok=True)
     
     #run selected functions
-    
-    if md5sums:
-        click.echo("Checking md5sums of fastq files in raw-data/")
-        md5sum_match = utils.md5sums()
-        if md5sum_match == False:
-            click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
+        
     click.echo(f"{library} library selected")
     click.echo(f"Mismatches allowed: {mismatch}")
     
@@ -145,10 +148,7 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis):
     
     #join count files
     utils.join(library)
-    
-    #create normalised count file
-    utils.normalise()
-    
+        
     #apply statistics to count files
     if analysis == "mageck":
         utils.mageck()

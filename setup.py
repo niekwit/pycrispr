@@ -10,8 +10,7 @@ setup(
     author_email='nw416@cam.ac.uk',
     license='GPL-3.0 license',
     packages=find_packages(),
-    install_requires=['seaborn','matplotlib','sphinx-rtd-theme',
-                      'numpy','pandas','pyyaml','furo',
+    install_requires=['seaborn','matplotlib','numpy','pandas','pyyaml',
                       'tqdm','cutadapt', 'multiqc','Click'
                       ],
     classifiers=[
