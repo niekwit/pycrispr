@@ -1,6 +1,10 @@
 .. pycrispr documentation master file, created by
    sphinx-quickstart on Sat Jan 28 16:10:33 2023.
    
+.. image:: https://readthedocs.org/projects/pycrispr/badge/?version=latest
+    :target: https://pycrispr.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 pycrispr
 ====================================
 
