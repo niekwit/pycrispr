@@ -30,7 +30,7 @@ def version():
 
 @click.command(name='show-libs')
 def show_libs():
-    ''' Displays which sgRNA libraries have been written to crispr.yaml
+    ''' Display which sgRNA library info has been stored
     '''
     lib = os.path.join(script_dir,"crispr.yaml")
     if os.path.exists(lib):
@@ -43,11 +43,13 @@ def show_libs():
 
 @click.command(name='md5sums')
 def md5sums():
-	click.echo("Checking md5sums of fastq files in raw-data/")
-	md5sum_match = utils.md5sums()
-	if not md5sum_match:
-		click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
-		return()
+    ''' Check md5sums of fastq files
+    '''
+    click.echo("Checking md5sums of fastq files in raw-data/")
+    md5sum_match = utils.md5sums()
+    if not md5sum_match:
+        click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
+        return()
 
 @click.command(name='add-lib')
 @click.option("-n","--name", required=True,
@@ -164,6 +166,7 @@ def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis):
     
 #add subparsers
 cli.add_command(show_libs)
+cli.add_command(md5sums)
 cli.add_command(add_lib)
 cli.add_command(analysis)
 cli.add_command(version)

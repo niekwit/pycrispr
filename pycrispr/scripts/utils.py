@@ -221,7 +221,7 @@ def csv2fasta(csv):
     #create fasta df
     df["column"] = df_CSV.stack().reset_index(drop = True)
     df.iloc[0::2, :] = ">"+df.iloc[0::2, :]
-    return(fasta)
+    #return(fasta)
     '''
     library_name = os.path.basename(csv)
     library_name = library_name.replace(".csv","")
@@ -264,15 +264,30 @@ def trim(threads,sg_length):
             subprocess.run(cutadapt, shell = True)
 
 
-def buildIndex(file,fasta=False,csv=False):
-	'''Build HISAT2 index from fasta file
-	'''
+def buildIndex(library,file,fasta=False,csv=False):
+    '''Build HISAT2 index from fasta file
+    '''
     click.secho(f"WARNING: no HISAT2 index found for {library} library, building now...",fg="red")
-	if not fasta:
-		fasta = csv2fasta(csv)
-	
-	return(index)
-
+    #if only a csv file is available, create the fasta file from it
+    if not fasta:
+        fasta = csv2fasta(csv)
+    
+    #check if HISAT2 index path has been stored previously
+    index_path_file = os.path.join(script_dir,".index-path.txt")
+    if not os.path.exists(index_path_file):
+        index_parent_dir = click.prompt(f"Please enter the directory to store the HISAT2 index for the {library} library", type=str)
+        index_path = os.path.join(index_parent_dir,library)
+        if click.confirm(f"The HISAT2 index path for the {library} will be: {index_path}\nIs this correct?", abort=True):
+            if click.confirm("Do you want to use the parent path to store all future sgRNA library indeces?", abort=False):
+                #save path to file
+                with open(index_path_file, "w") as text_file:
+                    text_file.write(index_parent_dir)
+                    
+        
+    
+    #return(index)
+    
+    
 def align(threads,mismatch,index):
     ''' Align and count trimmed reads with HISAT2
     '''
@@ -322,14 +337,14 @@ def count(threads,mismatch,library):
         #check if fasta is available to build HISAT2 index
         if not os.path.exists(fasta):
             if not os.path.exists(csv):
-		        click.secho(f"ERROR: no fasta or csv file for {library} library found./Please update library information",fg="red")
-		        return()
-	        else:
-			    #build index with csv file
-			    index = buildIndex(csv,False,True)
+                click.secho(f"ERROR: no fasta or csv file for {library} library found./Please update library information",fg="red")
+                return()
+            else:
+    			 #build index with csv file
+                index = buildIndex(library,csv,False,True)
         else:
         	#build index with fasta file
-        	index = buildIndex(fasta,True,False)
+        	index = buildIndex(library,fasta,True,False)
     
     #remove vector sequences from reads
     trim(threads,sg_length)
