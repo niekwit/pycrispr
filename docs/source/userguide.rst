@@ -1,6 +1,6 @@
 User guide
 ====================================
-Show **pycrispr** help messages
+Show *pycrispr* help messages
 ------------------------------------
 To display the ``pycrispr`` help message, use this command:
 
@@ -17,23 +17,29 @@ To display the ``pycrispr`` help message, use this command:
    Commands:
      add-lib    Add sgRNA library to crispr.yaml
      analysis   Run CRISPR-Cas9 screen analysis pipeline
+     md5sums	Check md5sums of fastq files
+     show-libs	Display which sgRNA library info has been stored
      version    Report the current build and version number
 
 This shows all available functionalities, which also have their own help messages, for example:
 
 .. code-block:: console
 
-   $ pycrispr  add-lib --help
-   Usage: pycrispr add-lib [OPTIONS]
+   $ pycrispr analysis --help
+   Usage: pycrispr analysis [OPTIONS]
    
-   		Add sgRNA library to crispr.yaml
-   		
+   		Run CRISPR-Cas9 screen analysis pipeline
+   
    Options:
-     -i, --index TEXT     HISAT2 path  [required]
-     -f, --fasta TEXT     Fasta file path  [required]
-     -c, --csv TEXT       CSV file path  [required]
-     --sg-length INTEGER  sgRNA length  [required]
-     --help               Show this message and exit.
+     --md5sums                       Check md5sums of fastq files
+     --fastqc                        Quality control of fastq files
+     -r, --rename                    Rename fastq files according to rename.csv
+     -t, --threads INTEGER           Number of CPU threads used during analysis
+     -l, --library TEXT              CRISPR-Cas9 library
+     -m, --mismatch INTEGER          Number of mismatches allowed during alignment [default: 0]
+     -a, --analysis [mageck|bagel2]  Statistical analysis with MAGeCK or BAGEL2 [default: mageck]
+
+
    
 Add sgRNA library information
 ------------------------------------

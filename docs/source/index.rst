@@ -8,9 +8,9 @@
 pycrispr
 ====================================
 
-**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data. ``pycrispr`` is being developped by Dr. Niek Wit at the University of Cambridge in the groups of `Prof James Nathan <https://www.jamesnathanlab.com>`_ and `Prof Paul Lehner <https://www.citiid.cam.ac.uk/paul-lehner/>`_. Please cite ``pycrispr`` if you found it useful and use it in a publication.
+**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data. 
 
-Index
+Contents
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. toctree::
    :maxdepth: 2
@@ -18,7 +18,7 @@ Index
    /requirements
    /installation
    /userguide
-   /cite
+   /about
    Source code <https://github.com/niekwit/pycrispr/>
 
 Quickstart
@@ -28,7 +28,7 @@ Quickstart
 
 .. code-block:: console
 
-   $ pycrispr add-lib --name yusa-mouse --index none --fasta /path/to/fasta.fa --csv none --sg-length 20
+   $ pycrispr add-lib --name yusa-mouse --index /path/to/hisat2-index --fasta none --csv none --sg-length 20
 
 2. Run analysis:
 
@@ -43,9 +43,7 @@ Links
 * `Report an issue <https://github.com/niekwit/pycrispr/issues>`_
 * `Project page on PyPi <xxx>`_
 
-.. note::
 
-   This project is under active development.
    
    
    
