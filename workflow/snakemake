@@ -1,0 +1,131 @@
+import glob
+import os
+
+from ..scripts import utils as utils
+
+
+#load config file
+configfile: "experiment.yaml"
+
+#load variables
+doc = utils.loadYaml("crispr")
+fasta = doc[library]["fasta"]
+index = doc[library["index"]]
+sg_length = doc[library["sg_length"]]
+script_dir = doc[script_dir]
+work_dir = os.getcwd()
+
+#get file extension of sequence files (should be fq or fastq)
+test_file = glob.glob("raw-data/*.gz"))[0]
+extension = test_file.rsplit(".",2)[1]
+
+#check if files need to be renamed
+if "rename" in configfile:
+    old_sample = list(configfile["rename"].keys())
+    sample = [configfile["rename"][x] for x in old_sample]
+else:
+    sample = [os.path.basename(x).replace(".{extension}.gz") for x in glob.glob("raw-data/*{extension}.gz")]
+
+#load mageck settings
+comparisons = [value for (key,value) in configfile["stats"]["comparisons"].items()]
+test_samples = [x.split("_vs_")[0] for x in comparisons]
+control_samples = [x.split("_vs_")[1] for x in comparisons]
+
+
+
+####SNAKEMAKE RULES####
+
+#target rule
+rule all:
+    input:
+        expand("mageck/{comparisons}/{comparisons}.gene_summary.txt",comparisons=comparisons)
+
+
+#other rules
+if "rename" in configfile:
+    rule rename:
+        input:
+            expand("raw-data/{old_sample}.{extension}.gz",old_sample=old_sample,extension=extension)
+        output:
+            expand("raw-data/{sample}.{extension}.gz",old_sample=sample,extension=extension)
+        shell:
+            "mv {input} {output}"
+
+
+rule fastqc:
+    input:
+        expand("raw-data/{sample}.{extension}.gz",old_sample=sample,extension=extension)
+    output:
+        expand("fastqc/{sample}_fastqc.html",sample=sample)
+    threads: 
+    shell:
+        "fastqc --threads {threads} --quiet {input}"
+
+
+rule multiqc:
+    input:
+        rule.fastqc.output
+    output:
+        "fastqc/multiqc_report.html"
+     log:
+        "logs/multiqc/{sample}.log"
+    shell:
+        "multiqc fastqc/ 2> {log}"
+
+
+rule trim:
+    input:
+        expand("raw-data/{sample}.{extension}.gz",sample=sample,extension=extension),
+    output:
+        expand("trim/{sample}_trimmed.{extension}.gz",sample=sample,extension=extension)
+    params:
+        sgl=sg_length
+    log:
+        "logs/trim/{sample}.log"
+    threads: configfile["resources"]["trim"]["cpu"]
+    resources:
+        mem_mb: configfile["resources"]["trim"]["mem"],
+        runtime_min: configfile["resources"]["trim"]["time"]
+    shell:
+        "cutadapt -j {threads} --quality-base 33 -l {params.sgl} -o {output} {input} 2> {log}"
+
+
+rule count:
+    input: 
+        rule.trim.output
+    output:
+        "count/{sample}.guidecounts.txt"
+    params:
+        idx=index,
+        mm=configfile["mismatch"]
+    threads: configfile["resources"]["count"]["cpu"]
+    log:
+        "logs/hisat2/{sample}.log"
+    shell:
+        "zcat {input} | hisat2 --no-hd -p {threads} -t -N {params.mm} -x {params.idx} - 2> {log} | "
+        "sed '/XS:/d' | cut -f3 | sort | uniq -c | sed 's/^ *//' | sed '1d' > {output}"
+
+
+rule join:
+    input:
+        rule.count.output
+    output:
+        "count/counts-aggregated.tsv"
+    run:
+        utils.join(library)
+
+
+rule mageck:
+    input: 
+        count_table = rule.count.output,
+        comparison = comparisons,
+        test_sample = test_samples,
+        control_sample = control_samples
+    output: 
+        "mageck/{input.comparison}/{input.comparison}.gene_summary.txt"
+    log:
+        "logs/mageck/{input.comparison}.log"
+    shell:
+        "mageck test -k {input.count_table} -t {input.test_sample} -c {input.control_sample} -n mageck/{input.comparison}/{comparison} 2> {log}"
+
+
