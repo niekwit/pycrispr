@@ -9,7 +9,7 @@ To display the ``pycrispr`` help message, use this command:
    $ pycrispr --help
    Usage: pycrispr [OPTIONS] COMMAND [ARGS]...
    
-   		CRISPR-Cas9 screen analysis pipeline
+   		A snakemake-based CRISPR-Cas9 screen analysis pipeline
    
    Options:
      --help  Show this message and exit.

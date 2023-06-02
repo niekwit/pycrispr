@@ -16,7 +16,7 @@ script_dir = doc[script_dir]
 work_dir = os.getcwd()
 
 #get file extension of sequence files (should be fq or fastq)
-test_file = glob.glob("raw-data/*.gz"))[0]
+test_file = glob.glob("raw-data/*.gz")[0]
 extension = test_file.rsplit(".",2)[1]
 
 #check if files need to be renamed
@@ -38,26 +38,31 @@ control_samples = [x.split("_vs_")[1] for x in comparisons]
 #target rule
 rule all:
     input:
-        expand("mageck/{comparisons}/{comparisons}.gene_summary.txt",comparisons=comparisons)
+        expand("mageck/{comparisons}/{comparisons}.gene_summary.txt", comparisons=comparisons)
 
 
 #other rules
 if "rename" in configfile:
     rule rename:
         input:
-            expand("raw-data/{old_sample}.{extension}.gz",old_sample=old_sample,extension=extension)
+            expand("raw-data/{old_sample}.{extension}.gz", old_sample=old_sample,extension=extension)
         output:
-            expand("raw-data/{sample}.{extension}.gz",old_sample=sample,extension=extension)
+            expand("raw-data/{sample}.{extension}.gz", old_sample=sample,extension=extension)
         shell:
             "mv {input} {output}"
 
 
 rule fastqc:
     input:
-        expand("raw-data/{sample}.{extension}.gz",old_sample=sample,extension=extension)
+        expand("raw-data/{sample}.{extension}.gz", old_sample=sample,extension=extension)
     output:
-        expand("fastqc/{sample}_fastqc.html",sample=sample)
-    threads: 
+        "fastqc/{sample}_fastqc.html"
+    conda:
+        "envs/qc.yaml"
+    threads: configfile["resources"]["fastqc"]["cpu"]
+    resources:
+        mem_mb: configfile["resources"]["fastqc"]["mem"],
+        runtime_min: configfile["resources"]["fastqc"]["time"]
     shell:
         "fastqc --threads {threads} --quiet {input}"
 
@@ -67,22 +72,30 @@ rule multiqc:
         rule.fastqc.output
     output:
         "fastqc/multiqc_report.html"
-     log:
+    log:
         "logs/multiqc/{sample}.log"
+    conda:
+        "envs/qc.yaml"
+    threads: configfile["resources"]["fastqc"]["cpu"]
+    resources:
+        mem_mb: configfile["resources"]["fastqc"]["mem"],
+        runtime_min: configfile["resources"]["fastqc"]["time"]
     shell:
         "multiqc fastqc/ 2> {log}"
 
 
 rule trim:
     input:
-        expand("raw-data/{sample}.{extension}.gz",sample=sample,extension=extension),
+        expand("raw-data/{sample}.{extension}.gz", sample=sample,extension=extension)
     output:
-        expand("trim/{sample}_trimmed.{extension}.gz",sample=sample,extension=extension)
+        temp(expand("raw-data/{sample}_trimmed.{extension}.gz", sample=sample,extension=extension))
     params:
         sgl=sg_length
     log:
         "logs/trim/{sample}.log"
     threads: configfile["resources"]["trim"]["cpu"]
+    conda:
+        "envs/trim.yaml"
     resources:
         mem_mb: configfile["resources"]["trim"]["mem"],
         runtime_min: configfile["resources"]["trim"]["time"]
@@ -99,8 +112,13 @@ rule count:
         idx=index,
         mm=configfile["mismatch"]
     threads: configfile["resources"]["count"]["cpu"]
+    resources:
+        mem_mb: configfile["resources"]["count"]["mem"],
+        runtime_min: configfile["resources"]["count"]["time"]
     log:
         "logs/hisat2/{sample}.log"
+    conda:
+        "envs/count.yaml"
     shell:
         "zcat {input} | hisat2 --no-hd -p {threads} -t -N {params.mm} -x {params.idx} - 2> {log} | "
         "sed '/XS:/d' | cut -f3 | sort | uniq -c | sed 's/^ *//' | sed '1d' > {output}"
@@ -111,6 +129,11 @@ rule join:
         rule.count.output
     output:
         "count/counts-aggregated.tsv"
+    conda:
+        "envs/join.yaml"
+    resources:
+        mem_mb: configfile["resources"]["short"]["mem"],
+        runtime_min: configfile["resources"]["short"]["time"]
     run:
         utils.join(library)
 
@@ -125,7 +148,14 @@ rule mageck:
         "mageck/{input.comparison}/{input.comparison}.gene_summary.txt"
     log:
         "logs/mageck/{input.comparison}.log"
+    resources:
+        mem_mb: configfile["resources"]["mageck"]["mem"],
+        runtime_min: configfile["resources"]["mageck"]["time"]
     shell:
         "mageck test -k {input.count_table} -t {input.test_sample} -c {input.control_sample} -n mageck/{input.comparison}/{comparison} 2> {log}"
+
+
+
+
 
 
