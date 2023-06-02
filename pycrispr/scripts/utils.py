@@ -215,6 +215,7 @@ def csv2fasta(csv):
     #create fasta df
     df["column"] = df_CSV.stack().reset_index(drop = True)
     df.iloc[0::2, :] = ">"+df.iloc[0::2, :]
+    #return(fasta)
     '''
     library_name = os.path.basename(csv)
     library_name = library_name.replace(".csv","")
@@ -239,7 +240,7 @@ def csv2fasta(csv):
     #exit message
     sys.exit("Fasta file created and added to library.yaml\nPlease provide more CRISPR library information in this file before first run.")
     '''
-
+	
 
 def trim(threads,sg_length):
     ''' Remove vector sequence from reads
@@ -255,12 +256,6 @@ def trim(threads,sg_length):
             cutadapt = f"cutadapt -j {threads} --quiet --quality-base 33 -l {sg_length} -o {trimmed} {file} 2>> stdout.log"
             write2log(cutadapt)
             subprocess.run(cutadapt, shell = True)
-
-
-def buildIndex():
-    '''Builds HISAT2 index
-    '''
-    pass
 
 
 def align(threads,mismatch,index):
@@ -308,24 +303,24 @@ def count(threads,mismatch,library):
     sg_length = doc[library]["sg_length"]
     
     #check if index is available
-    if index == "":
+    if not os.path.exists(index):
         #check if fasta is available to build HISAT2 index
-        if fasta != "":
-            click.secho(f"WARNING: no HISAT2 index found for {library} library, building now...",fg="red")
-            index_dir = os.path.dirname(fasta)
-            hisat2_build = f""
-            
-        elif csv != "":
-            click.secho(f"WARNING: no HISAT2 index or fasta found for {library} library",fg="red")
-            print("Generating fasta file from CSV file")
-            csv2fasta(csv)
+        if not os.path.exists(fasta):
+            if not os.path.exists(csv):
+                click.secho(f"ERROR: no fasta or csv file for {library} library found./Please update library information",fg="red")
+                return()
+            else:
+    			 #build index with csv file
+                index = buildIndex(library,csv,False,True)
+        else:
+        	#build index with fasta file
+        	index = buildIndex(library,fasta,True,False)
     
-    else:
-        #remove vector sequences from reads
-        trim(threads,sg_length)
-        
-        #align and count reads
-        align(threads,mismatch,index)
+    #remove vector sequences from reads
+    trim(threads,sg_length)
+    
+    #align and count reads
+    align(threads,mismatch,index)
 
 
 def join(library):
@@ -386,24 +381,6 @@ def join(library):
               index = False)
 
 
-def normalise():
-    '''Normalise counts-aggregated.tsv to total read count per sample
-    '''
-    click.echo("Creating normalised count table")
-    
-    
-    df = pd.read_table(os.path.join(work_dir,"count","counts-aggregated.tsv"))
-    column_range = range(2,len(df.columns))
-    for i in column_range:
-        column_sum = df[df.columns[i]].sum()
-        df[df.columns[i]] = df[df.columns[i]] / column_sum * 1E8
-        
-        df[df.columns[i]] = df[df.columns[i]].astype(int)
-    df.to_csv(os.path.join(work_dir,"count","counts-aggregated-normalised.csv"),
-              index = False,
-              header = True)
-
-
 def mageck():
     '''Statistical analysis of sgRNA counts with MAGeCK
     '''
@@ -434,7 +411,7 @@ def mageck():
         os.makedirs(os.path.join(work_dir,"mageck",exp), exist_ok=True)
         
         #create MAGeCK command
-        mageck = f"mageck test -k {count_table} -t {test} -c {control} -n {prefix} 2>> {stdout_log}"
+        mageck = f"mageck test --normcounts-to-file -k {count_table} -t {test} -c {control} -n {prefix} 2>> {stdout_log}"
         
         #run command
         write2log(mageck)

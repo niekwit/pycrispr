@@ -1,15 +1,30 @@
 Installation
 ====================================
+
+Installation with git
+------------------------------------
+To install ``pycrispr`` with ``git``:
+
+.. code-block:: console
+
+   $ git clone https://github.com/niekwit/pycrispr.git
+
+This only installs the ``pycrispr`` code and not any (non)-Python dependencies, which will have to be installed manually as described below. 
+
 Installation with pip
 ------------------------------------
 
-To install **pycrispr** with pip:
+To install ``pycrispr`` with ``pip``:
 
 .. code-block:: console
 
    $ pip install pycrispr
    
-This command installs **pycrispr** and all the Python dependencies. 
+.. warning::
+
+   This is not yet available.
+   
+This command installs ``pycrispr`` and all the Python dependencies. 
 
 .. important::
 
@@ -19,7 +34,9 @@ This command installs **pycrispr** and all the Python dependencies.
     
     * `FastQC <https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>`_ (optional)
     * `HISAT2 <http://daehwankimlab.github.io/hisat2/>`_
-    * `MAGeCK (optional) <https://sourceforge.net/p/mageck/wiki/Home/>`_
+    * `MAGeCK <https://sourceforge.net/p/mageck/wiki/Home/>`_
+
+
     
     These dependencies should be set in $PATH or in a directory that is in $PATH, such as /usr/local/bin. For instructions to add a directory to your $PATH, click `here <https://stackoverflow.com/questions/14637979/how-to-permanently-set-path-on-linux-unix>`_
 
@@ -28,7 +45,7 @@ Statistical analysis can be performed with either MAGeCK or BAGEL2. If these are
 Installation with conda
 ------------------------------------
 
-To install ``pycrispr`` with conda:
+To install ``pycrispr`` with ``conda``:
 
 .. code-block:: console
 
@@ -37,7 +54,7 @@ To install ``pycrispr`` with conda:
 The non-Python dependencies will be included in the conda installation.
 
 
-.. note::
+.. warning::
 
    This is not yet available.
 
