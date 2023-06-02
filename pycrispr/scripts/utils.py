@@ -13,14 +13,14 @@ import pandas as pd
 import click
 import yaml
 from itertools import compress
-from tqdm.auto import tqdm
-
 
 #set global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
 stdout_log = os.path.join(work_dir,"stdout.log")
 
+
+#Functions for pycrispr
 
 def logCommandLineArgs():
     args = sys.argv
@@ -32,13 +32,13 @@ def logCommandLineArgs():
                       file = open(os.path.join(work_dir,"commands.log"), "a"))
 
 
-def md5sums():
+def md5sums(md5sum_files):
     """Checks md5sums of fastqc files
     """
     ###to do:add old file names to df so that this function can still be run after renaming files
     
     #get md5sum files
-    md5sum_files = glob.glob(os.path.join(work_dir,"raw-data","*.md5sums.txt"))
+    #md5sum_files = glob.glob(os.path.join(work_dir,"raw-data","*.md5sums.txt"))
     if len(md5sum_files) == 0:
         click.secho("ERROR: no *.md5sum.txt files found in raw-data/",fg="red")
         return()
@@ -170,14 +170,6 @@ def fastqc(threads):
     subprocess.run(multiqc)
 
 
-def logCommandLineArgs():
-    args = sys.argv
-    args = " ".join(args)
-
-    if "--help" not in args:
-        print(args,file = open(os.path.join(work_dir,"commands.log"), "a"))
-
-
 def write2log(command,name=""):
     '''Write bash command to commands.log
     '''
@@ -198,11 +190,13 @@ def fileExists(file): #check if file exists/is not size zero
         return(False)
 
 
-def loadYaml():
+def loadYaml(name):
     '''Load crispr.yaml as dictionary
     '''
-    
-    yaml_file = os.path.join(script_dir,"crispr.yaml")
+    if name == "crispr"
+        yaml_file = os.path.join(script_dir,"crispr.yaml")
+    else:
+        yaml_file = os.path.join(work_dir,f"{name}.yaml")
     
     with open(yaml_file) as f:
         doc = yaml.safe_load(f)
@@ -264,6 +258,8 @@ def trim(threads,sg_length):
 
 
 def buildIndex():
+    '''Builds HISAT2 index
+    '''
     pass
 
 
@@ -281,16 +277,16 @@ def align(threads,mismatch,index):
         if not fileExists(count_file):
             '''
             1. Align with HISAT2 to index
-            2. Remove all unmapped reads using samtools
-            3. Select third field of SAM file that contains sgRNA name using awk
-            4. Sort sgRNA names
-            5. Count unique sgRNA names
-            6. Remove leading white space using sed
+            2. Select third field of SAM file that contains sgRNA name using awk
+            3. Sort sgRNA names
+            4. Count unique sgRNA names
+            5. Remove leading white space using sed
+            6. Remove line with unmapped reads (first line) (sed)
             '''
             tqdm.write(base_file)
             hisat2 = ["zcat",file,"|","hisat2","-p",threads,"-t","-N",mismatch,"-x",index, 
-            "-","2>>",stdout_log,"|","samtools","view","-@",threads,"-F","4","|","awk",
-            "'{print $3}'","|","sort","|","uniq","-c","|","sed","'s/^ *//'",">",count_file]
+            "-","2>>",stdout_log,"|","awk","'{print $3}'","|","sort","|","uniq","-c","|",
+            "sed","'s/^ *//'","|","sed","'1d",">",count_file]
             write2log(" ".join(hisat2))
             subprocess.run(f'echo "{base_file}" >> {stdout_log}',shell=True)
             subprocess.run(" ".join(hisat2),shell=True)
@@ -408,7 +404,7 @@ def normalise():
               header = True)
 
 
-def mageck(cnv):
+def mageck():
     '''Statistical analysis of sgRNA counts with MAGeCK
     '''
     #check if MAGeCK is in $PATH
@@ -418,7 +414,7 @@ def mageck(cnv):
     #check if stats.txt is available
     stats = os.path.join(work_dir,"stats.csv")
     if not os.path.exists(stats):
-        click.secho("ERROR: stats.txt not found (MAGeCK comparisons)",fg="red")
+        click.secho("ERROR: stats.csv not found (MAGeCK comparisons)",fg="red")
         return()
     
     #load stats.txt
@@ -444,10 +440,6 @@ def mageck(cnv):
         write2log(mageck)
         subprocess.run(mageck,shell=True)
         
-def bagel2():
-    pass
-
-
 
 
 

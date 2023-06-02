@@ -2,23 +2,22 @@
 
 import subprocess
 import os
+import shutil
 import click
 import yaml
-import timeit
-import time
 
 from ..scripts import utils as utils
 
 #global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
-version = "1.0"
+version = "0.1"
 
 
-####command line parser
+####command line parser####
 @click.group()
 def cli():
-    """CRISPR-Cas9 screen analysis pipeline
+    """Snakemake-based CRISPR-Cas9 screen analysis pipeline
     """
     utils.logCommandLineArgs()
     
@@ -42,18 +41,25 @@ def show_libs():
         return()
 
 @click.command(name='add-lib')
-@click.option("-n","--name", required=True,
+@click.option("-n",
+              "--name", 
+              required=True,
               help="Library name")
-@click.option("-i","--index", required=True,
+@click.option("-i","--index", 
+              required=True,
               help="HISAT2 index path")
-@click.option("-f","--fasta", required=True,
+@click.option("-f","--fasta", 
+              required=True,
               help="Fasta file path")
-@click.option("-c","--csv", required=True,
+@click.option("-c","--csv", 
+              required=True,
               help="CSV file path")
-@click.option("--sg-length", required=True, type=int,
+@click.option("--sg-length", 
+              required=True, 
+              type=int,
               help="sgRNA length")
 
-def add_lib(name,index,fasta,csv,sg_length,species):
+def add_lib(name,index,fasta,csv,sg_length):
     ''' Add sgRNA library to crispr.yaml
     '''
     #create dictionary keys for yaml dump
@@ -64,6 +70,7 @@ def add_lib(name,index,fasta,csv,sg_length,species):
     if not os.path.exists(yaml_file):
         #no pre-existing yaml file so start with dict to create one
         doc = {}
+        doc["script_dir"] = script_dir 
         doc[name] = {}
         doc[name]["index"] = index
         doc[name]["fasta"] = fasta
@@ -90,78 +97,67 @@ def add_lib(name,index,fasta,csv,sg_length,species):
             yaml.dump(doc,f)
 
 @click.command(name='analysis')
-@click.option("--md5sums", is_flag=True, show_default=True, default=False,
-              help="Check md5sums of fastq files")
-@click.option("--fastqc", is_flag=True, show_default=True, default=False,
-              help="Quality control of fastq files")
-@click.option("-r", "--rename", is_flag=True, show_default=True, default=False, 
-              help="Rename fastq files according to rename.csv")
-@click.option("-t","--threads", default=1, type=int, 
-              help="Number of CPU threads used during analysis")
-@click.option("-l","--library",
-              help="CRISPR-Cas9 library")
-@click.option("-m","--mismatch", default=0, show_default=True, type=int, 
-              help="Number of mismatches allowed during alignment")
-@click.option("-a","--analysis", default="mageck", show_default=True, 
-              type=click.Choice(["mageck","bagel2"]),
-              help="Statistical analysis with MAGeCK or BAGEL2")
+@click.option("-t","--threads", 
+              default=1, 
+              show_default=True, 
+              help="Total number of CPU threads to use for local analysis")
+@click.option("-s","--slurm", 
+              default=False, 
+              show_default=True, 
+              help="Run pipeline on SLURM-based HPC")
+@click.option("-d","--dryrun", 
+              default=False, 
+              show_default=True,
+              help="Dry run for running pipeline (helpful for testing if pipeline works)")
+@click.option("-v","--verbose", 
+              default=False, 
+              show_default=True,
+              help="Increase verbosity")
 
-def analysis(md5sums,fastqc,rename,threads,library,mismatch,analysis,cnv,fdr,go):
+
+def analysis(threads,slurm,dryrun,verbose):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
-    #start run timer
-    start = timeit.default_timer()
-    
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
     
-    threads = str(threads)
-    mismatch = str(mismatch)
+    #total threads for local pipeline run
+    threads = str(threads)    
+      
+    #copy snakemake file to work_dir:
+    snakemake_file = os.path.join(script_dir,"workflow","snakemake")
+    snakemake_copy = os.path.join(work_dir,"snakemake")
+    shutil.copyfile(snakemake_file,snakemake_copy)
     
-    #create output dirs
-    os.makedirs(os.path.join(work_dir,"count"),exist_ok=True)
-    if analysis == "mageck":
-        os.makedirs(os.path.join(work_dir,"mageck"),exist_ok=True)
-    elif analysis == "bagel2":
-        os.makedirs(os.path.join(work_dir,"mageck"),exist_ok=True)
+    #plot DAG
+    try:
+        @click.echo("Plottig snakemake DAG")
+        dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
+        process=subprocess.check_output(dag,shell=True)
+    except subprocess.CalledProcessError:
+        print("ERROR: make sure snakemake and graphviz is installed")
     
-    #run selected functions
+    #construct snakemake command
+    snakemake = "snakemake --use-conda" 
     
-    if md5sums:
-        click.echo("Checking md5sums of fastq files in raw-data/")
-        md5sum_match = utils.md5sums()
-        if md5sum_match == False:
-            click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
-    click.echo(f"{library} library selected")
-    click.echo(f"Mismatches allowed: {mismatch}")
+    if verbose:
+        snakemake = f"{snakemake} -p" #-p prints shell commands
+    if dryrun:
+        @click.echo("Dry run only")
+        snakemake = f"{snakemake} -n"
+    if slurm:
+        #load slurm default resources
+        slurm = utils.loadYaml("slurm")
+        account = slurm["account"]
+        partition = slurm("partition")
+        
+        snakemake = f"{snakemake} --slurm --default-resources slurm_account={account} slurm_partition={partition}"
+    else:
+        snakemake = f"{snakemake} --cores {threads}"
     
-    if rename:
-        utils.rename()
+    #run snakemake command
+    subprocess.run(snakemake, shell = True)
     
-    if fastqc:
-       utils.fastqc(threads)
-    
-    #align and count sgRNA reads
-    utils.count(threads,mismatch,library)
-    
-    #join count files
-    utils.join(library)
-    
-    #create normalised count file
-    utils.normalise()
-    
-    #apply statistics to count files
-    if analysis == "mageck":
-        utils.mageck(cnv)
-    elif analysis == "bagel2":
-        utils.bagel2()
-    
-    #print total run time
-    stop = timeit.default_timer()
-    total_time = stop - start
-    ty_res = time.gmtime(total_time)
-    res = time.strftime("%H:%M:%S",ty_res)
-    print(f"Total run time: {res}")
-    
+       
 #add subparsers
 cli.add_command(show_libs)
 cli.add_command(add_lib)
