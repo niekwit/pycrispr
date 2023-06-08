@@ -1,0 +1,318 @@
+import glob
+import os
+import shutil
+
+import yaml
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.use('agg')
+
+
+#script_dir = shutil.which("pycrispr")
+script_dir = "/home/niek/Dropbox/scripts/pycrispr"
+
+
+####PYTHON FUNCTIONS (some or all will move to their own files later)####
+def loadYaml(name):
+    '''Load yaml as dictionary'''    
+    with open(f"{name}.yaml") as f:
+        doc = yaml.safe_load(f)
+    return(doc)
+
+def join(fasta,file_list):
+    ''' Join count files to create MAGeCK/BAGEL2 input
+    '''
+    counts = {}
+       
+    for file in file_list:
+       #add counts to counts dict
+       df = pd.read_csv(file,sep=" ",header = None)
+       key = os.path.basename(file).replace(".guidecounts.txt", "")
+       df.columns = [key, "sgRNA"]
+       df[key].astype(int)
+       counts.update({key:df})
+  
+    df = pd.read_csv(fasta, header = None)
+    df.columns = ["sgRNA"]
+    
+    df = df[df["sgRNA"].str.contains(">")]
+    df = df.reset_index(drop = True)
+    df["sgRNA"] = df["sgRNA"].str.replace(">", "")
+    df["gene"] = df["sgRNA"].str.split(pat = "_",n = 1,expand = True)[0]
+    
+    #perform left join on count files
+    for key, value in counts.items():
+        df = pd.merge(df, value, on='sgRNA', how='left')
+    df["sgRNA"] = df["sgRNA"].str.split(pat = "_",n = 1,expand = True)[1]
+    
+    #replace nan with zero
+    df = df.fillna(0)
+    df = df.sort_values(by = ["sgRNA"])
+    
+    #convert floats back to int after pandas merge (bug in pandas)
+    index_range = range(2, len(df.columns))
+    index_list = []
+    for i in index_range:
+        index_list.append(i)
+    df[df.columns[index_list]] = df[df.columns[index_list]].astype(int)
+    
+    #save data frame to file
+    df.to_csv(os.path.join(work_dir,"count",'counts-aggregated.tsv'), 
+              sep = '\t',
+              index = False)
+    
+def plot(df,y_label,save_file):
+    '''General plotting function'''
+    sns.set_style("white")
+    sns.set_style("ticks")
+    sns.barplot(x=list(df.keys())[0],
+                    y=list(df.keys())[1],
+                    data=df,
+                    color="royalblue",
+                    edgecolor="black",
+                    linewidth=1)
+    plt.ylabel(y_label)
+    plt.xticks(rotation = 'vertical')
+    plt.xlabel("")
+    plt.tight_layout()
+    sns.despine()
+    plt.savefig(save_file)
+    plt.close()
+
+def plot_alignment_rate(log_files):
+    plot_file="count/alignment-rates.pdf"
+    
+    #create df to store alignment rates
+    df = pd.DataFrame(columns=["sample","alignment_rate"],index=np.arange(len(log_files)))
+    samples = []
+    rates = []
+
+    for i in sorted(log_files):
+        #get sample name from file name
+        sample = os.path.basename(i).replace(".log","")
+        samples.append(sample)
+        
+        #extract alignment rate from file
+        with open(i) as f:
+            lines = f.readlines()
+        rate = float([x for x in lines if "overall alignment rate" in x][0].replace("% overall alignment rate\n",""))
+        rates.append(rate)
+
+    #add values to empty df for plotting
+    df["sample"] = samples
+    df["alignment_rate"] = rates
+
+    #plot alignment rate
+    plot(df,"Overall alignment rate (%)",plot_file)
+
+def plot_coverage(fasta,count_table): #plots coverage per sample after alignment
+    plot_file = "count/sequence-coverage.pdf"
+
+    #get number of sgRNAs in CRISPR library
+    fasta = pd.read_table(fasta, header = None)
+    lib_size = len(fasta) / 2
+
+    #extract number of single mapped aligned reads from counts-aggregated.tsv
+    df = pd.read_table("count/counts-aggregated.tsv", sep = "\t")
+    column_names = list(df.columns)
+    del column_names[0:2] #delete sgRNA and gene columns
+    
+    counts = {}
+    for i in column_names:
+        count_sum = []
+        count_sum.append(df[i].sum())
+        counts[i] = count_sum
+    
+    #convert counts to sequence coverage
+    df = pd.DataFrame(counts)
+    df = df / lib_size
+    
+    #order columns alphabetically
+    df = df.reindex(sorted(df.columns), axis=1)
+    
+    #transpose data frame
+    df = df.transpose()
+    df["samples"] = df.index
+    names = ["coverage", "samples"]
+    df.columns = names
+    df = df[["samples","coverage"]]
+    
+    #plot coverage per sample
+    plot(df,"Fold sequence coverage per sample",plot_file)
+
+####LOADING VARIABLES####
+
+#load config file
+configfile: "experiment.yaml"
+
+#load variables
+library = config["library"]
+doc = loadYaml("crispr")
+fasta = doc[library]["fasta"]
+index = doc[library]["index_path"]
+sg_length = doc[library]["sg_length"]
+work_dir = os.getcwd()
+
+#get sample names
+SAMPLES = [os.path.basename(x).replace(".fq.gz","") for x in glob.glob("reads/*fq.gz")]
+#remove any pre-existing trimmed fq files from this list
+SAMPLES = [x for x in SAMPLES if not "_trimmed" in x]
+
+#load mageck settings
+COMPARISONS = [value for (key,value) in config["stats"]["comparisons"].items()]
+MAGECK_TEST = [x.split('_vs_')[0] for x in COMPARISONS],
+MAGECK_CONTROL = [x.split('_vs_')[1] for x in COMPARISONS]
+
+####SNAKEMAKE RULES####
+
+#rules to be run on login node instead of compute node when running on HPC (only very small jobs)
+localrules: all, join, plot_alignment_rate, plot_coverage  
+
+#set target rule
+rule all:
+    input:
+        "qc/multiqc.html",
+        "count/alignment-rates.pdf",
+        "count/sequence-coverage.pdf",
+        expand("mageck/{comparison}_summary.Rnw",comparison=COMPARISONS),
+        expand("mageck/{comparison}.gene_summary.txt",comparison=COMPARISONS),
+        expand("mageck/{comparison}.log",comparison=COMPARISONS),
+        expand("mageck/{comparison}.R",comparison=COMPARISONS),
+        expand("mageck/{comparison}.report.Rmd",comparison=COMPARISONS),
+        expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS)
+
+
+        
+rule fastqc:
+    input:
+        "reads/{sample}_trimmed.fq.gz"
+    output:
+        html="qc/fastqc/{sample}.html",
+        zip="qc/fastqc/{sample}_fastqc.zip" # the suffix _fastqc.zip is necessary for multiqc to find the file
+    params:
+        extra = "--quiet"
+    log:
+        "logs/fastqc/{sample}.log"
+    threads: config["resources"]["fastqc"]["cpu"]
+    conda:
+        "envs/qc.yaml"
+    wrapper:
+        "v1.31.1/bio/fastqc"
+
+
+rule multiqc_file:
+    input:
+        expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
+    output:
+        "qc/multiqc.html"
+    params:
+        extra="",  # Optional: extra parameters for multiqc.
+        use_input_files_only=True, # Optional, use only a.txt and don't search folder samtools_stats for files
+    log:
+        "logs/multiqc/multiqc.log"
+    conda:
+        "envs/qc.yaml"
+    wrapper:
+        "v1.31.1/bio/multiqc"
+
+
+rule trim:
+    input:
+        "reads/{sample}.fq.gz"
+    output:
+        temp("reads/{sample}_trimmed.fq.gz")
+    params:
+        sgl=sg_length
+    threads: config["resources"]["trim"]["cpu"]
+    conda:
+        "envs/trim.yaml"
+    log:
+        "logs/trim/{sample}.log",
+    resources:
+        runtime=config["resources"]["trim"]["time"]
+    shell:
+        "cutadapt -j {threads} --quality-base 33 -l {params.sgl} -o {output} {input}"
+
+
+rule count:
+    input: 
+        "reads/{sample}_trimmed.fq.gz"
+    output:
+        "count/{sample}.guidecounts.txt"
+    params:
+        idx=index,
+        mm=config["mismatch"]
+    threads: config["resources"]["count"]["cpu"]
+    resources:
+        runtime=config["resources"]["count"]["time"]
+    log:
+        "logs/count/{sample}.log"
+    conda:
+        "envs/count.yaml"
+    shell:
+        "zcat {input} | hisat2 --no-hd -p {threads} -t -N {params.mm} -x {params.idx} - 2> {log} | "
+        "sed '/XS:/d' | cut -f3 | sort | uniq -c | sed 's/^ *//' | sed '1d' > {output}"
+
+
+rule join:
+    input:
+        files=expand("count/{sample}.guidecounts.txt", sample=SAMPLES)
+    params:
+        fa=fasta
+    output:
+        "count/counts-aggregated.tsv"
+    resources:
+        runtime=config["resources"]["short"]["time"]
+    run:
+        join(params.fa, input.files)
+
+
+rule mageck:
+    input: 
+        "count/counts-aggregated.tsv"
+    output:
+        "mageck/{comparison}_summary.Rnw",
+        "mageck/{comparison}.gene_summary.txt",
+        "mageck/{comparison}.log",
+        "mageck/{comparison}.R",
+        "mageck/{comparison}.report.Rmd",
+        "mageck/{comparison}.sgrna_summary.txt",
+        "mageck/{comparison}.normalized.txt"
+    resources:
+        runtime=config["resources"]["mageck"]["time"]
+    conda:
+        "envs/mageck.yaml"
+    log:
+        "logs/mageck/{comparison}.log"
+    shell:
+        '''
+        mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//') -n mageck/{wildcards.comparison} 2> {log}
+        '''
+
+rule plot_alignment_rate:
+    input:
+        expand("logs/count/{sample}.log", sample=SAMPLES)
+    output:
+        "count/alignment-rates.pdf"
+    run:
+        plot_alignment_rate(input)
+
+
+rule plot_coverage:
+    input:
+        fa=fasta,
+        cnt="count/counts-aggregated.tsv"
+    output:
+        "count/sequence-coverage.pdf"
+    run:
+        plot_coverage(input.fa, input.cnt)
+
+
+
+
+
+
+
