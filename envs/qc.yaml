@@ -1,0 +1,7 @@
+name: qc
+channels: 
+  - bioconda
+dependencies:
+  - python
+  - fastqc
+  - multiqc
