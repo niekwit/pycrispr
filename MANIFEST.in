@@ -1,0 +1,3 @@
+recursive-include pycrispr/scripts/src/ *.yaml
+include pycrispr/scripts/src/cam_style.css
+include pycrispr/scripts/src/snakefile
