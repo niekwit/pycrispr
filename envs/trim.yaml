@@ -1,6 +1,0 @@
-name: trim
-channels: 
-  - bioconda
-dependencies:
-  - python
-  - cutadapt

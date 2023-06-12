@@ -1,6 +1,0 @@
-name: mageck
-channels: 
-  - bioconda
-dependencies:
-  - python
-  - mageck

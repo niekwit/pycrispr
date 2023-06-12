@@ -1,8 +1,0 @@
-name: join
-channels:
-  - annaconda
-  - conda-forge
-dependencies:
-  - python
-  - click
-  - pandas

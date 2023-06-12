@@ -1,6 +1,0 @@
-name: count
-channels: 
-  - bioconda
-dependencies:
-  - python
-  - hisat2
