@@ -3,13 +3,13 @@
 import subprocess
 import os
 import shutil
+import glob
 import click
-import yaml
 
 from ..scripts import utils as utils
 
-#global variables
-script_dir = os.path.abspath(os.path.dirname(__file__))
+
+script_dir, script_file = os.path.split(__file__)
 work_dir = os.getcwd()
 version = "0.1"
 
@@ -19,92 +19,27 @@ version = "0.1"
 def cli():
     """Snakemake-based CRISPR-Cas9 screen analysis pipeline
     """
-    utils.logCommandLineArgs()
-    
-@click.command(name='version')
-def version():
-    """Report the current build and version number
-    """
-    click.echo(version)
-
-@click.command(name='show-libs')
-def show_libs():
-    ''' Display which sgRNA library info has been stored
-    '''
-    lib = os.path.join(script_dir,"crispr.yaml")
-    if os.path.exists(lib):
-        click.secho("The following sgRNA libraries are available in crispr.yaml:",fg="green")
-        subprocess.run(["cat", lib])
-    else:
-        click.echo("WARNING: no sgRNA library has been added yet")
-        click.echo("Please run `pycrispr add-lib`")
-        return()
-
-@click.command(name='md5sums')
-def md5sums():
-    ''' Check md5sums of fastq files
-    '''
-    click.echo("Checking md5sums of fastq files in raw-data/")
-    md5sum_match = utils.md5sums()
-    if not md5sum_match:
-        click.secho("ERROR: At least one calculated md5sum did not match the pre-calculated ones\nPlease check md5sums_failed.csv",color="red")
-        return()
-
-@click.command(name='add-lib')
-@click.option("-n",
-              "--name", 
-              required=True,
-              help="Library name")
-@click.option("-i","--index", 
-              required=True,
-              help="HISAT2 index path")
-@click.option("-f","--fasta", 
-              required=True,
-              help="Fasta file path")
-@click.option("-c","--csv", 
-              required=True,
-              help="CSV file path")
-@click.option("--sg-length", 
-              required=True, 
-              type=int,
-              help="sgRNA length")
-
-def add_lib(name,index,fasta,csv,sg_length):
-    ''' Add sgRNA library to crispr.yaml
-    '''
-    #create dictionary keys for yaml dump
-    yaml_keys = ["fasta","index","csv","sg_length","species"]
-    
-    #write/create crispr.yaml file
-    yaml_file = os.path.join(script_dir,"crispr.yaml")
-    if not os.path.exists(yaml_file):
-        #no pre-existing yaml file so start with dict to create one
-        doc = {}
-        doc["script_dir"] = script_dir 
-        doc[name] = {}
-        doc[name]["index"] = index
-        doc[name]["fasta"] = fasta
-        doc[name]["csv"] = csv
-        doc[name]["sg_length"] = sg_length
         
-        #write dictionary to crispr.yaml
-        with open(yaml_file, "w") as f:
-            yaml.dump(doc,f)
-    else:
-        #open file as dictionary and add library info
-        with open(yaml_file) as f:
-            doc = yaml.safe_load(f)
-            doc[name] = {}
-            for i in yaml_keys:
-                doc[name][i] = ""
-            doc[name]["index"] = index
-            doc[name]["fasta"] = fasta
-            doc[name]["csv"] = csv
-            doc[name]["sg_length"] = sg_length
+
+@click.command(name='report')
+
+def report():
+    ''' Create html report of data
+    '''
+    #create report for previous pipeline run
+    click.secho("Creating report of analysis...",fg="green")
+    #copy CU style sheet
+    style_ori = os.path.join(script_dir,"src","cam_style.css")
+    style = "src/cam_style.css"
+    shutil.copyfile(style_ori,style)
     
-        #write appended dictionary with all sgRNA library info to crispr.yaml
-        with open(yaml_file, "w") as f:
-            yaml.dump(doc,f)
+    #create command
+    report = f"snakemake --report report.html --report-stylesheet {style}"
+    
+    #run command
+    subprocess.run(report, shell=True)
+    return
+
 
 @click.command(name='analysis')
 @click.option("-t","--threads", 
@@ -112,18 +47,15 @@ def add_lib(name,index,fasta,csv,sg_length):
               show_default=True, 
               help="Total number of CPU threads to use for local analysis")
 @click.option("-s","--slurm", 
-              default=False, 
-              show_default=True, 
+              is_flag=True,
               help="Run pipeline on SLURM-based HPC")
 @click.option("-d","--dryrun", 
-              default=False, 
-              show_default=True,
+              is_flag=True,
               help="Dry run for running pipeline (helpful for testing if pipeline works)")
 @click.option("-v","--verbose", 
-              default=False, 
               show_default=True,
+              is_flag=True,
               help="Increase verbosity")
-
 
 
 def analysis(threads,slurm,dryrun,verbose):
@@ -131,22 +63,30 @@ def analysis(threads,slurm,dryrun,verbose):
     '''
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
     
-
     #total threads for local pipeline run
     threads = str(threads)    
-      
+    
+    #check if files need to be renamed
+    experiment = utils.loadYaml("experiment")
+    if "rename" in experiment:
+        utils.rename()
+    
+    
     #copy snakemake file to work_dir:
-    snakemake_file = os.path.join(script_dir,"workflow","snakemake")
-    snakemake_copy = os.path.join(work_dir,"snakemake")
+    snakemake_file = os.path.join(script_dir,"src","snakefile")
+    snakemake_copy = os.path.join(work_dir,"snakefile")
     shutil.copyfile(snakemake_file,snakemake_copy)
     
+    #copy utils to work_dir
+    utils_file = os.path.join(script_dir,"utils.py")
+    utils_copy = os.path.join(work_dir,"utils.py")
+    shutil.copyfile(utils_file,utils_copy)
+    
     #plot DAG
-    try:
-        @click.echo("Plottig snakemake DAG")
-        dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
-        process=subprocess.check_output(dag,shell=True)
-    except subprocess.CalledProcessError:
-        print("ERROR: make sure snakemake and graphviz is installed")
+    click.echo("Plotting snakemake DAG")
+    dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
+    process=subprocess.check_output(dag,shell=True)
+    
     
     #construct snakemake command
     snakemake = "snakemake --use-conda" 
@@ -154,7 +94,7 @@ def analysis(threads,slurm,dryrun,verbose):
     if verbose:
         snakemake = f"{snakemake} -p" #-p prints shell commands
     if dryrun:
-        @click.echo("Dry run only")
+        click.echo("Dry run only")
         snakemake = f"{snakemake} -n"
     if slurm:
         #load slurm default resources
@@ -166,16 +106,21 @@ def analysis(threads,slurm,dryrun,verbose):
     else:
         snakemake = f"{snakemake} --cores {threads}"
 
+    #copy conda envs yamls to work_dir
+    conda_envs = glob.glob(os.path.join(script_dir,"src","*.yaml"))
+    to_dir = os.path.join(work_dir,"envs")
+    os.makedirs(to_dir,exist_ok = True)
+    
+    [shutil.copyfile(x,os.path.join(to_dir,os.path.basename(x))) for x in conda_envs]
+    
+    
     #run snakemake command
-    subprocess.run(snakemake, shell = True)
+    subprocess.run(snakemake, shell=True)
     
        
 #add subparsers
-cli.add_command(show_libs)
-cli.add_command(md5sums)
-cli.add_command(add_lib)
+cli.add_command(report)
 cli.add_command(analysis)
-cli.add_command(version)
 
     
         
