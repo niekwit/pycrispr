@@ -25,4 +25,5 @@ setup(
             'pycrispr = pycrispr.scripts.pycrispr:cli',
         ],
     },
+    include_package_data=True,
 )
