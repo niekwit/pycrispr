@@ -1,0 +1,215 @@
+/* 
+
+--------------------------------------
+
+Standard template CSS 
+
+--------------------------------------
+
+*/
+
+
+
+
+
+body {
+
+padding: 0;
+
+margin: 0;
+
+font-family: Verdana, Arial, Helvetica, sans-serif;
+
+color: #432611;
+
+font-size: 70%;
+
+}
+
+img {
+
+border: none;
+
+}
+
+
+
+ul {
+
+padding: 0;
+
+margin: 0;
+
+list-style-type: none;
+
+}
+
+
+
+li {
+
+padding: 0;
+
+margin: 0;
+
+}
+
+
+
+table {
+
+font-size: 1em;
+
+}
+
+
+
+td {
+
+vertical-align: top;
+
+}
+
+
+
+/* 
+
+--------------------------------------
+
+standard link styles
+
+--------------------------------------
+
+*/
+
+
+
+a {
+
+color: #432611;
+
+text-decoration: underline;
+
+}
+
+
+
+a:link {
+
+color: #432611;
+
+text-decoration: underline;
+
+}
+
+
+
+a:visited {
+
+color: #432611;
+
+text-decoration: underline;
+
+}
+
+
+
+a:hover {
+
+color: #432611;
+
+text-decoration: none;
+
+}
+
+
+
+a:active {
+
+color: #432611;
+
+text-decoration: underline;
+
+}
+
+
+
+
+
+
+
+/* 
+
+--------------------------------------
+
+footer
+
+--------------------------------------
+
+*/
+
+
+
+#footer {
+
+font-size: 65%;
+
+padding: 10px 0 10px 10px;
+
+margin: 10px 0 0 0;
+
+color: #666;
+
+border-top: solid 1px #ccc;
+
+}
+
+
+
+#footer a {
+
+text-decoration: underline;
+
+color: #666;
+
+}
+
+
+
+#footer a:link {
+
+text-decoration: underline;
+
+color: #666;
+
+}
+
+
+
+#footer a:visited {
+
+text-decoration: underline;
+
+color: #666;
+
+}
+
+
+
+#footer a:hover {
+
+text-decoration: none;
+
+color: #666;
+
+}
+
+
+
+#footer a:active {
+
+text-decoration: none;
+
+color: #666;
+
+}

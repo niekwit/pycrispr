@@ -1,0 +1,177 @@
+import glob
+import os
+import utils #helper functions
+
+#get script directory (git repository)
+script_dir = os.path.dirname(__file__)
+work_dir = os.getcwd()
+
+####LOADING VARIABLES####
+
+#load config file
+configfile: "experiment.yaml"
+
+#load variables
+library = config["library"]
+
+fasta = config["lib_info"][library]["fasta"]
+index = config["lib_info"][library]["index"]
+sg_length = config["lib_info"][library]["sg_length"]
+
+#get sample names
+SAMPLES = [os.path.basename(x).replace(".fq.gz","") for x in glob.glob("reads/*fq.gz")]
+#remove any pre-existing trimmed fq files from this list
+SAMPLES = [x for x in SAMPLES if not "_trimmed" in x]
+
+#load mageck settings
+COMPARISONS = [value for (key,value) in config["stats"]["comparisons"].items()]
+
+
+####SNAKEMAKE RULES####
+
+#rules to be run on login node instead of compute node when running on HPC (only very small jobs)
+localrules: all, join, plot_alignment_rate, plot_coverage  
+
+#set target rule
+rule all:
+    input:
+        expand("qc/fastqc/{sample}.html", sample=SAMPLES),
+        expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES),
+        "qc/multiqc.html",
+        "count/alignment-rates.pdf",
+        "count/sequence-coverage.pdf",
+        expand("mageck/{comparison}_summary.Rnw",comparison=COMPARISONS),
+        expand("mageck/{comparison}.gene_summary.txt",comparison=COMPARISONS),
+        expand("mageck/{comparison}.log",comparison=COMPARISONS),
+        expand("mageck/{comparison}.R",comparison=COMPARISONS),
+        expand("mageck/{comparison}.report.Rmd",comparison=COMPARISONS),
+        expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS)
+
+
+        
+rule fastqc:
+    input:
+        "reads/{sample}_trimmed.fq.gz"
+    output:
+        html="qc/fastqc/{sample}.html",
+        zip="qc/fastqc/{sample}_fastqc.zip" # the suffix _fastqc.zip is necessary for multiqc to find the file
+    params:
+        extra = "--quiet"
+    log:
+        "logs/fastqc/{sample}.log"
+    threads: config["resources"]["fastqc"]["cpu"]
+    wrapper:
+        "v1.31.1/bio/fastqc"
+
+
+rule multiqc_file:
+    input:
+        expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
+    output:
+        "qc/multiqc.html"
+    params:
+        extra="",  # Optional: extra parameters for multiqc.
+        use_input_files_only=True, # Optional, use only a.txt and don't search folder samtools_stats for files
+    log:
+        "logs/multiqc/multiqc.log"
+    wrapper:
+        "v1.31.1/bio/multiqc"
+
+
+rule trim:
+    input:
+        "reads/{sample}.fq.gz"
+    output:
+        temp("reads/{sample}_trimmed.fq.gz")
+    params:
+        sgl=sg_length
+    threads: config["resources"]["trim"]["cpu"]
+    conda:
+        "envs/trim.yaml"
+    log:
+        "logs/trim/{sample}.log",
+    resources:
+        runtime=config["resources"]["trim"]["time"]
+    shell:
+        "cutadapt -j {threads} --quality-base 33 -l {params.sgl} -o {output} {input}"
+
+
+rule count:
+    input: 
+        "reads/{sample}_trimmed.fq.gz"
+    output:
+        "count/{sample}.guidecounts.txt"
+    params:
+        idx=index,
+        mm=config["mismatch"]
+    threads: config["resources"]["count"]["cpu"]
+    resources:
+        runtime=config["resources"]["count"]["time"]
+    log:
+        "logs/count/{sample}.log"
+    conda:
+        "envs/count.yaml"
+    shell:
+        "zcat {input} | hisat2 --no-hd -p {threads} -t -N {params.mm} -x {params.idx} - 2> {log} | "
+        "sed '/XS:/d' | cut -f3 | sort | uniq -c | sed 's/^ *//' | sed '1d' > {output}"
+
+
+rule join:
+    input:
+        files=expand("count/{sample}.guidecounts.txt", sample=SAMPLES)
+    params:
+        fa=fasta
+    output:
+        "count/counts-aggregated.tsv"
+    resources:
+        runtime=config["resources"]["short"]["time"]
+    run:
+        utils.join(params.fa, input.files)
+
+
+rule mageck:
+    input: 
+        "count/counts-aggregated.tsv"
+    output:
+        "mageck/{comparison}_summary.Rnw",
+        "mageck/{comparison}.gene_summary.txt",
+        "mageck/{comparison}.log",
+        "mageck/{comparison}.R",
+        "mageck/{comparison}.report.Rmd",
+        "mageck/{comparison}.sgrna_summary.txt",
+        "mageck/{comparison}.normalized.txt"
+    resources:
+        runtime=config["resources"]["mageck"]["time"]
+    conda:
+        "envs/mageck.yaml"
+    log:
+        "logs/mageck/{comparison}.log"
+    shell:
+        '''
+        mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//') -n mageck/{wildcards.comparison} 2> {log}
+        '''
+
+rule plot_alignment_rate:
+    input:
+        expand("logs/count/{sample}.log", sample=SAMPLES)
+    output:
+        "count/alignment-rates.pdf"
+    run:
+        utils.plot_alignment_rate(input)
+
+
+rule plot_coverage:
+    input:
+        fa=fasta,
+        cnt="count/counts-aggregated.tsv"
+    output:
+        "count/sequence-coverage.pdf"
+    run:
+        utils.plot_coverage(input.fa, input.cnt)
+
+
+
+
+
+
+
