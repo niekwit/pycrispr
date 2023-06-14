@@ -57,7 +57,7 @@ Getting started with ``pycrispr``
          fasta: /home/user/Documents/references/fasta/Human/dub-only/DUBonly.fasta
          sg_length: 20
          species: hsa #hsa for human, mmu for mouse
-   mismatch: 0
+   mismatch: 0 #number of mismatches allowed during alignment with HISAT2
    stats: 
       type: mageck
       comparisons: #test vs control 
@@ -108,7 +108,7 @@ To start the analysis run:
 
 .. code-block:: console
 
-   $ pycrispr pycrispr analysis -t 24
+   $ pycrispr analysis -t 24
 
 This will first rename the files according to *experiment.yaml*, use a total of 24 CPU threads, select the *dub-only* sgRNA library, and use MAGeCK for pair-wise comparisons specified in *experiment.yaml*. 
 
@@ -152,3 +152,9 @@ Multiple output files will be generated::
    ├── snakefile
    └── utils.py
 
+
+
+.. figure:: https://github.com/niekwit/pycrispr/blob/master/example_output/dag.png
+   :align: center
+
+   Directed acyclic graph (DAG) for workflow
