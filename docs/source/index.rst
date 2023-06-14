@@ -8,7 +8,7 @@
 pycrispr
 ====================================
 
-**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data. 
+**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data based on the ``snakemake`` workflow management software. 
 
 Contents
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,20 +21,6 @@ Contents
    /about
    Source code <https://github.com/niekwit/pycrispr/>
 
-Quickstart
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. Add sgRNA library information:
-
-.. code-block:: console
-
-   $ pycrispr add-lib --name yusa-mouse --index /path/to/hisat2-index --fasta none --csv none --sg-length 20
-
-2. Run analysis:
-
-.. code-block:: console
-
-   $ pycrispr analysis --threads 4 -l yusa-mouse 
 
 Links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

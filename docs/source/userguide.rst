@@ -1,25 +1,23 @@
 User guide
 ====================================
+
 Show *pycrispr* help messages
 ------------------------------------
 To display the ``pycrispr`` help message, use this command:
 
 .. code-block:: console
-
+   
    $ pycrispr --help
    Usage: pycrispr [OPTIONS] COMMAND [ARGS]...
-   
-   		A snakemake-based CRISPR-Cas9 screen analysis pipeline
-   
+
+   Snakemake-based CRISPR-Cas9 screen analysis pipeline
+
    Options:
-     --help  Show this message and exit.
-   
+      --help  Show this message and exit.
+
    Commands:
-     add-lib    Add sgRNA library to crispr.yaml
-     analysis   Run CRISPR-Cas9 screen analysis pipeline
-     md5sums	Check md5sums of fastq files
-     show-libs	Display which sgRNA library info has been stored
-     version    Report the current build and version number
+      analysis  Run CRISPR-Cas9 screen analysis pipeline
+      report    Create HTML report of analysis
 
 This shows all available functionalities, which also have their own help messages, for example:
 
@@ -27,159 +25,130 @@ This shows all available functionalities, which also have their own help message
 
    $ pycrispr analysis --help
    Usage: pycrispr analysis [OPTIONS]
-   
-   		Run CRISPR-Cas9 screen analysis pipeline
-   
+
+      Run CRISPR-Cas9 screen analysis pipeline
+
    Options:
-     --md5sums                       Check md5sums of fastq files
-     --fastqc                        Quality control of fastq files
-     -r, --rename                    Rename fastq files according to rename.csv
-     -t, --threads INTEGER           Number of CPU threads used during analysis
-     -l, --library TEXT              CRISPR-Cas9 library
-     -m, --mismatch INTEGER          Number of mismatches allowed during alignment [default: 0]
-     -a, --analysis [mageck|bagel2]  Statistical analysis with MAGeCK or BAGEL2 [default: mageck]
+      -t, --threads INTEGER  Total number of CPU threads to use for local analysis
+                              [default: 1]
+      -s, --slurm            Run pipeline on SLURM-based HPC
+      -d, --dryrun           Dry run for running pipeline (helpful for testing if
+                              pipeline works)
+      -v, --verbose          Increase verbosity
+      --help                 Show this message and exit.
 
 
-   
-Add sgRNA library information
+
+Getting started with ``pycrispr``
 ------------------------------------
-Before using ``pycrispr``, information about the sgRNA library needs to be added:
+``pycrispr`` requires a YAML file that contains information of the experiment, and available CRISPR sgRNA libraries:
 
-1. sgRNA library name
-2. Path to HISAT2 index (if available, otherwise none)
-3. Fasta file that contains the sgRNA names and sequences (if available, otherwise none)
-4. CSV file with two columns: sgRNA name and sgRNA sequence
+.. code-block:: yaml
 
-This can be done with the following command:
+   slurm: False #submit jobs to SLURM-based HPC
+   rename: #rename to .fq.gz
+      L8_S1_L001_R1_001.fastq.gz: L8.fq.gz
+      S8_S3_L001_R1_001.fastq.gz: S8.fq.gz
+      S15_S4_L001_R1_001.fastq.gz: S15.fq.gz
+   library: dub-only #CRISPR library for current experiment
+   lib_info: #all available CRISPR libraries
+      dub-only:
+         index: /home/user/Documents/references/index/hisat2/dub-only/dub-only-hisat2.index #HISAT2 index path
+         fasta: /home/user/Documents/references/fasta/Human/dub-only/DUBonly.fasta
+         sg_length: 20
+         species: hsa #hsa for human, mmu for mouse
+   mismatch: 0
+   stats: 
+      type: mageck
+      comparisons: #test vs control 
+         1: S8_vs_L8 #sample names are file names without extension
+         2: S15_vs_L8
+         3: S8,S15_vs_L8 # samples can be pooled together
+   resources:
+      account: SLURM_ACCOUNT_NAME #only for HPC use
+      partition: PARTITION #only for HPC use
+      short:
+         cpu: 1
+         time: 15 # in minutes; only for HPC use
+      trim:
+         cpu: 4
+         time: 60
+      fastqc:
+         cpu: 4
+         time: 60
+      count:
+         cpu: 8
+         time: 120
+      mageck:
+         cpu: 1
+         time: 60
 
-.. code-block:: console
+.. note:: You can delete the rename section if you do not need to rename your files, but please keep in mind that the sample names will be taken from the read files names by removing the file extension. Also, the *comparisons* in the *stats* section should match this.
 
-   $ pycrispr add-lib --name yusa-mouse --index none --fasta /path/to/fasta.fa --csv none --sg-length 20 
-   
-This will add an sgRNA library called `yusa-mouse <https://www.addgene.org/pooled-library/yusa-crispr-knockout-mouse-v2/>`_, with no HISAT2 index available, a path to the sgRNA library fasta file, and no path to a CSV file that contains sgRNA names and sequences. ``pycrispr`` can now be used to analyse data with this sgRNA library. If no path to a pre-existing HISAT2 index is given, it will be build from the fasta file, or CSV file, which is first converted to a fasta file. The index path will be stored automatically. Adding an sgRNA library will only have to be done once.
-
-Show saved sgRNA library information
-------------------------------------
-To see which sgRNA libraries have been added to ``pycrispr``, run:
-
-.. code-block:: console
-
-   $ pycrispr show-libs
-   
-   The following sgRNA libraries are available:
-   yusa-mouse:
-     csv: none
-     fasta: /home/user/Documents/fasta/yusa-mouse.fasta
-     index: none
-     sg_length: 20
 
 Preparing CRISPR-Cas9 screen data
 ------------------------------------
-Before running ``pycrispr`` an analysis directory has to be created (can be any name or location), and should contain a sub-directory called raw-data. This sub-directory contains all the fastq files from your CRISPR-Cas9 screen experiment::
+Before running ``pycrispr`` an analysis directory has to be created (can be any name or location), and should contain a sub-directory called *reads*. This sub-directory contains all the fastq files of your CRISPR-Cas9 screen experiment::
 
-    analysis_dir
-    └── raw-data
-    	├── SLXXXXXX1_R1_001.fq
-    	├── SLXXXXXX2_R1_001.fq
-    	└── SLXXXXXX3_R1_001.fq
+   analysis_dir
+   └── reads
+    	├── L8_S1_L001_R1_001.fastq.gz
+    	├── S8_S3_L001_R1_001.fastq.gz
+    	└── S15_S4_L001_R1_001.fastq.gz
+   └── experiment.yaml 
 
 
 .. important::
 	Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paried-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence.
 
-Preparing configuration files
+
+Initiating the pipeline
 ------------------------------------
-rename.csv (optional)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Depending on the NGS platform, fastq files can have very long file names, and as ``pycrispr`` uses the basename of a file as its sample name, it is advised to rename your fastq files prior to analysis. The existing and new files names can be included in a csv file called ``rename.csv`` as follows::
-
-	existing,new
-	SLXXXXXX1_R1_001.fq,S1.fq
-	SLXXXXXX2_R1_001.fq,S2.fq
-	SLXXXXXX3_R1_001.fq,L1.fq
-
-How to apply this file will be descibed below.
-
-stats.csv
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-If statistical analysis of sgRNA counts is required, a ``stats.csv`` file is needed with the following content::
-
-	test,control
-	S1,L1
-	S2,L1
-	S1;S2,L1
-
-
-This will run MAGeCK RRA or BAGEL2 for three pair-wise comparisons:
-
-1. S1 (test) vs L1 (control)
-2. S2 (test) vs L1 (control)
-3. S1,S2 (combined test samples) vs L1 (control)
-
-
-As shown in comparison 3, multiple sample can be combined by separating them with a semi-colon. 
-
-The ``rename.csv`` and ``stats.csv`` files should be locatated in the main analysis directory::
-
-	analysis_dir
-	├── raw-data
-	├── stats.csv
-	└── rename.csv
-
-Checking md5sums fastq files
-------------------------------------
-
-
-
-
-Analysing CRISPR-Cas9 screen data
-------------------------------------
-The options for the CRISPR-Cas9 screen analysis are as follows::
-
-	  --md5sums                       Check md5sums of fastq files
-	  --fastqc                        Quality control of fastq files
-	  -r, --rename                    Rename fastq files according to rename.txt
-	  -t, --threads INTEGER           Number of CPU threads used during analysis
-	  -l, --library TEXT              CRISPR-Cas9 library
-	  -m, --mismatch INTEGER          Number of mismatches allowed during alignment [default: 0]
-	  -a, --analysis [mageck|bagel2]  Statistical analysis with MAGeCK or BAGEL2 [default: mageck]
-
-Analysis can be initiated with the following command:
+To start the analysis run:
 
 .. code-block:: console
 
-   $ pycrispr pycrispr analysis -r -t 4 -l yusa-mouse 
+   $ pycrispr pycrispr analysis -t 24
 
-This will first rename the files according to ``rename.csv``, use four CPU threads, select the yusa-mouse sgRNA library added earlier, and use MAGeCK for pair-wise comparisons between samples according to ``stats.csv``. 
-
-As the HISAT2 index path was not provided, ``pycrispr`` will build this first and include the path with the rest of the information. The index will be stored in a new directory called HISAT2-index in the parent directory of the fasta/csv file. This can be changed by providing an alternative path at the confirmation prompt:
-
-
+This will first rename the files according to *experiment.yaml*, use a total of 24 CPU threads, select the *dub-only* sgRNA library, and use MAGeCK for pair-wise comparisons specified in *experiment.yaml*. 
 
 
 Output files
 ------------------------------------
 
+Multiple output files will be generated::
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   analysis_dir
+   └── count
+      ├── alignment-rates.pdf
+      ├── counts-aggregated.tsv
+      ├── L8.guidecounts.txt
+      ├── S15.guidecounts.txt
+      ├── S8.guidecounts.txt
+      └── sequence-coverage.pdf
+   └── envs
+      ├── count.yaml
+      ├── flute.yaml
+      ├── join.yaml
+      ├── mageck.yaml
+      └── trim.yaml
+   └── envs
+      ├── count
+      ├── fastqc
+      ├── mageck
+      ├── multiqc
+      └── trim
+   └── mageck
+   └── mageck_flute
+   └── qc
+   └── reads
+    	├── L8_S1_L001_R1_001.fastq.gz
+    	├── S8_S3_L001_R1_001.fastq.gz
+    	└── S15_S4_L001_R1_001.fastq.gz
+   └── scripts
+      └── flute.R
+   ├── dag.pdf
+   ├── experiment.yaml
+   ├── snakefile
+   └── utils.py
 
