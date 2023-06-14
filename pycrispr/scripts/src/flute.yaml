@@ -1,0 +1,10 @@
+name: trim
+channels: 
+  - bioconda
+  - conda-forge
+dependencies:
+  - python
+  - r
+  - bioconductor-mageckflute
+  - bioconductor-clusterprofiler
+  - r-ggplot2
