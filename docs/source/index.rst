@@ -8,18 +8,8 @@
 pycrispr
 ====================================
 
-**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data based on the ``snakemake`` workflow management software. 
+**pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data. 
 
-Contents
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. toctree::
-   :maxdepth: 2
-
-   /requirements
-   /installation
-   /userguide
-   /about
-   Source code <https://github.com/niekwit/pycrispr/>
 
 
 Links
@@ -29,9 +19,6 @@ Links
 * `Report an issue <https://github.com/niekwit/pycrispr/issues>`_
 * `Project page on PyPi <xxx>`_
 
-
-   
-   
    
    
    

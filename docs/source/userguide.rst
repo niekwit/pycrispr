@@ -120,33 +120,33 @@ Multiple output files will be generated::
 
    analysis_dir
    └── count
-      ├── alignment-rates.pdf
-      ├── counts-aggregated.tsv
-      ├── L8.guidecounts.txt
-      ├── S15.guidecounts.txt
-      ├── S8.guidecounts.txt
-      └── sequence-coverage.pdf
+   |   ├── alignment-rates.pdf
+   |   ├── counts-aggregated.tsv
+   |   ├── L8.guidecounts.txt
+   |   ├── S15.guidecounts.txt
+   |   ├── S8.guidecounts.txt
+   |   └── sequence-coverage.pdf
    └── envs
-      ├── count.yaml
-      ├── flute.yaml
-      ├── join.yaml
-      ├── mageck.yaml
-      └── trim.yaml
-   └── envs
-      ├── count
-      ├── fastqc
-      ├── mageck
-      ├── multiqc
-      └── trim
+   |   ├── count.yaml
+   |   ├── flute.yaml
+   |   ├── join.yaml
+   |   ├── mageck.yaml
+   |   └── trim.yaml
+   └── logs
+   |   ├── count
+   |   ├── fastqc
+   |   ├── mageck
+   |   ├── multiqc
+   |   └── trim
    └── mageck
    └── mageck_flute
    └── qc
    └── reads
-    	├── L8_S1_L001_R1_001.fastq.gz
-    	├── S8_S3_L001_R1_001.fastq.gz
-    	└── S15_S4_L001_R1_001.fastq.gz
+   | 	├── L8_S1_L001_R1_001.fastq.gz
+   | 	├── S8_S3_L001_R1_001.fastq.gz
+   | 	└── S15_S4_L001_R1_001.fastq.gz
    └── scripts
-      └── flute.R
+   |   └── flute.R
    ├── dag.pdf
    ├── experiment.yaml
    ├── snakefile
@@ -158,3 +158,7 @@ Multiple output files will be generated::
    :align: center
 
    Directed acyclic graph (DAG) for workflow
+
+
+
+   
