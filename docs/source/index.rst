@@ -12,26 +12,20 @@ pycrispr
 
 .. toctree::
    :caption: Getting started
-   :name: getting_started
-   :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
 
    getting_started/requirements
    getting_started/installation
 
 .. toctree::
   :caption: Running pycrispr
-  :name: execution
-  :hidden:
-  :maxdepth: 1
+  :maxdepth: 2
 
   execution/userguide
 
 .. toctree::
   :caption: Project information
-  :name: about
-  :hidden:
-  :maxdepth: 1
+  :maxdepth: 2
 
   about/about
 
