@@ -1,5 +1,5 @@
 User guide
-====================================
+************
 
 Show *pycrispr* help messages
 ------------------------------------
@@ -154,7 +154,7 @@ Multiple output files will be generated::
 
 
 
-.. figure:: https://github.com/niekwit/pycrispr/blob/master/example_output/dag.png
+.. figure:: dag.png
    :align: center
 
    Directed acyclic graph (DAG) for workflow

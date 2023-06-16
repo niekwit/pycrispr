@@ -28,7 +28,7 @@ pycrispr
    execution/userguide
 
 .. toctree::
-  :caption: About
+  :caption: Project information
   :name: about
   :hidden:
   :maxdepth: 1
