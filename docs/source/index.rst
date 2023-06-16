@@ -25,7 +25,7 @@ pycrispr
   :hidden:
   :maxdepth: 1
 
-   execution/userguide
+  execution/userguide
 
 .. toctree::
   :caption: Project information
@@ -33,7 +33,7 @@ pycrispr
   :hidden:
   :maxdepth: 1
 
-   about/about
+  about/about
 
 Links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
