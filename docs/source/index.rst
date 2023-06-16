@@ -19,7 +19,6 @@ pycrispr
    getting_started/requirements
    getting_started/installation
 
-
 .. toctree::
   :caption: Running pycrispr
   :name: execution
@@ -27,6 +26,14 @@ pycrispr
   :maxdepth: 1
 
    execution/userguide
+
+.. toctree::
+  :caption: About
+  :name: about
+  :hidden:
+  :maxdepth: 1
+
+   about/about
 
 Links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
