@@ -10,7 +10,23 @@ pycrispr
 
 **pycrispr**: a user-friendly Python library for analysing CRISPR-Cas9 screen data. 
 
+.. toctree::
+   :caption: Getting started
+   :name: getting_started
+   :hidden:
+   :maxdepth: 1
 
+   getting_started/requirements
+   getting_started/installation
+
+
+.. toctree::
+  :caption: Running pycrispr
+  :name: execution
+  :hidden:
+  :maxdepth: 1
+
+   execution/userguide
 
 Links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
