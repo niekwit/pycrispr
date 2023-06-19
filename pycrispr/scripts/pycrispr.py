@@ -25,13 +25,14 @@ def report():
     '''
     #create report for previous pipeline run
     click.secho("Creating report of analysis...",fg="green")
-    #copy CU style sheet
-    style_ori = os.path.join(script_dir,"src","cam_style.css")
-    style = "src/cam_style.css"
-    shutil.copyfile(style_ori,style)
     
+    #copy report files to work_dir
+    shutil.copytree(os.path.join(script_dir,"src","report"),
+                    os.path.join(work_dir,"report"), 
+                    dirs_exist_ok=True)
+        
     #create command
-    report = f"snakemake --report report.html --report-stylesheet {style}"
+    report = "snakemake --report pycrispr-report.html"
     
     #run command
     subprocess.run(report, shell=True)
@@ -86,9 +87,10 @@ def analysis(threads,slurm,dryrun,verbose):
     shutil.copyfile(flute_file,flute_dest)
     
     #plot DAG
-    click.echo("Plotting snakemake DAG")
-    dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
-    process=subprocess.check_output(dag,shell=True)
+    if not os.path.exists("dag.pdf"):
+        click.echo("Plotting snakemake DAG")
+        dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
+        process=subprocess.check_output(dag,shell=True)
         
     #construct snakemake command
     snakemake = "snakemake --use-conda" 

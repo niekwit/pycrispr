@@ -29,6 +29,9 @@ COMPARISONS = [value for (key,value) in config["stats"]["comparisons"].items()]
 
 ####SNAKEMAKE RULES####
 
+#report location
+report: "report/report.rst"
+
 #rules to be run on login node instead of compute node when running on HPC (only very small jobs)
 localrules: all, join, plot_alignment_rate, plot_coverage  
 
@@ -40,11 +43,11 @@ rule all:
         "qc/multiqc.html",
         "count/alignment-rates.pdf",
         "count/sequence-coverage.pdf",
-        expand("mageck/{comparison}_summary.Rnw",comparison=COMPARISONS),
-        expand("mageck/{comparison}.gene_summary.txt",comparison=COMPARISONS),
-        expand("mageck/{comparison}.log",comparison=COMPARISONS),
-        expand("mageck/{comparison}.R",comparison=COMPARISONS),
-        expand("mageck/{comparison}.report.Rmd",comparison=COMPARISONS),
+        expand("mageck/{comparison}_summary.Rnw", comparison=COMPARISONS),
+        expand("mageck/{comparison}.gene_summary.txt", comparison=COMPARISONS),
+        expand("mageck/{comparison}.log", comparison=COMPARISONS),
+        expand("mageck/{comparison}.R", comparison=COMPARISONS),
+        expand("mageck/{comparison}.report.Rmd", comparison=COMPARISONS),
         expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.volcano.pdf", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
@@ -72,7 +75,7 @@ rule multiqc:
     input:
         expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
     output:
-        "qc/multiqc.html"
+        report("qc/multiqc.html", caption = "report/multiqc.rst", category = "MultiQC analysis of fastq files")
     params:
         extra="",  # Optional: extra parameters for multiqc.
         use_input_files_only=True, # Optional, use only a.txt and don't search folder samtools_stats for files
@@ -88,7 +91,8 @@ rule trim:
     output:
         temp("reads/{sample}_trimmed.fq.gz")
     params:
-        sgl=sg_length
+        sgl=sg_length,
+        lt=config["left_trim"],
     threads: config["resources"]["trim"]["cpu"]
     conda:
         "envs/trim.yaml"
@@ -97,7 +101,7 @@ rule trim:
     resources:
         runtime=config["resources"]["trim"]["time"]
     shell:
-        "cutadapt -j {threads} --quality-base 33 -l {params.sgl} -o {output} {input}"
+        "cutadapt -j {threads} --quality-base 33 -u {params.lt} -l {params.sgl} -o {output} {input}"
 
 
 rule count:
@@ -107,7 +111,7 @@ rule count:
         "count/{sample}.guidecounts.txt"
     params:
         idx=index,
-        mm=config["mismatch"]
+        mm=config["mismatch"],
     threads: config["resources"]["count"]["cpu"]
     resources:
         runtime=config["resources"]["count"]["time"]
@@ -138,7 +142,7 @@ rule mageck:
         "count/counts-aggregated.tsv"
     output:
         "mageck/{comparison}_summary.Rnw",
-        "mageck/{comparison}.gene_summary.txt",
+        report("mageck/{comparison}.gene_summary.txt", caption = "report/mageck.rst", category = "MAGeCK"),
         "mageck/{comparison}.log",
         "mageck/{comparison}.R",
         "mageck/{comparison}.report.Rmd",
@@ -161,10 +165,10 @@ rule mageck_flute:
         "mageck/{comparison}.gene_summary.txt",
         "mageck/{comparison}.sgrna_summary.txt"
     output:
-        "mageck_flute/{comparison}.volcano.pdf",
-        "mageck_flute/{comparison}.dot_pos.pdf",
-        "mageck_flute/{comparison}.dot_neg.pdf",
-        "mageck_flute/{comparison}.sgrank.pdf"
+        report("mageck_flute/{comparison}.volcano.pdf", caption="report/volcano.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "volcano plot"}),
+        report("mageck_flute/{comparison}.dot_pos.pdf", caption="report/dot-plot_pos.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot enriched genes"}),
+        report("mageck_flute/{comparison}.dot_neg.pdf", caption="report/dot-plot_neg.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot depleted genes"}),
+        report("mageck_flute/{comparison}.sgrank.pdf", caption="report/sgrank.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "sgRNA rank"}),
     params:
         config["lib_info"][library]["species"]
     conda:
@@ -177,7 +181,7 @@ rule plot_alignment_rate:
     input:
         expand("logs/count/{sample}.log", sample=SAMPLES)
     output:
-        "count/alignment-rates.pdf"
+        report("count/alignment-rates.pdf", caption="report/alignment-rates.rst", category="Alignment rates")
     run:
         utils.plot_alignment_rate(input)
 
@@ -187,7 +191,7 @@ rule plot_coverage:
         fa=fasta,
         cnt="count/counts-aggregated.tsv"
     output:
-        "count/sequence-coverage.pdf"
+        report("count/sequence-coverage.pdf", caption="report/plot-coverage.rst", category="Sequence coverage")
     run:
         utils.plot_coverage(input.fa, input.cnt)
 
