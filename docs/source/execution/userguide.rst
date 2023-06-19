@@ -41,7 +41,7 @@ This shows all available functionalities, which also have their own help message
 
 Getting started with ``pycrispr``
 ------------------------------------
-``pycrispr`` requires a YAML file that contains information of the experiment, and available CRISPR sgRNA libraries:
+``pycrispr`` requires a YAML file (experiment.yaml) that contains information of the experiment, and available CRISPR sgRNA libraries:
 
 .. code-block:: yaml
 
@@ -98,13 +98,12 @@ Before running ``pycrispr`` an analysis directory has to be created (can be any 
    └── experiment.yaml 
 
 
-.. important::
-	Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paried-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence.
+.. important:: Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paried-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence.
 
 
 Initiating the pipeline
 ------------------------------------
-To start the analysis run:
+To start the analysis, run:
 
 .. code-block:: console
 
@@ -142,9 +141,9 @@ Multiple output files will be generated::
    └── mageck_flute
    └── qc
    └── reads
-   | 	├── L8_S1_L001_R1_001.fastq.gz
-   | 	├── S8_S3_L001_R1_001.fastq.gz
-   | 	└── S15_S4_L001_R1_001.fastq.gz
+   | 	├── L8.fq.gz
+   | 	├── S8.fq.gz
+   | 	└── S15.fq.gz
    └── scripts
    |   └── flute.R
    ├── dag.pdf

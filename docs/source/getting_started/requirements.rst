@@ -19,3 +19,4 @@ Software
 
 It should also be possible to run ``pycrispr`` on MacOS via *Conda/Mamba* but this has not been tested yet.
 
+All other software dependencies are taken care of by the ``snakemake`` workflow management system.
