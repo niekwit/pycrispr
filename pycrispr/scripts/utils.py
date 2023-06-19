@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 ''' Functions for pycrispr
 '''
 import os
@@ -10,15 +9,13 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from pathlib import Path
 mpl.use('agg')
 
 #set global variables
 script_dir = os.path.abspath(os.path.dirname(__file__))
 work_dir = os.getcwd()
-stdout_log = os.path.join(work_dir,"stdout.log")
 
-
-#Functions for pycrispr
 
 def loadYaml(name):
     '''Load yaml as dictionary'''    
@@ -37,12 +34,15 @@ def rename():
     rename = yaml["rename"]
 
     old_names = list(rename.keys())
-    new_names = yaml["rename"]
+    new_names = list(yaml["rename"].values())
     
     for old,new in zip(old_names,new_names):
-        os.rename(os.path.join(work_dir,"reads",old),
-                  os.path.join(work_dir,"reads",new))
+        os.rename(os.path.join("reads",old),
+                  os.path.join("reads",new))
     
+    #create hidden file to mark that renaming has been performed
+    Path(os.path.join(".rename")).touch()
+
 
 def join(fasta,file_list):
     ''' Join count files to create MAGeCK/BAGEL2 input
@@ -88,7 +88,8 @@ def join(fasta,file_list):
 
 
 def plot(df,y_label,save_file):
-    '''General plotting function'''
+    '''General plotting function
+    '''
     sns.set_style("white")
     sns.set_style("ticks")
     sns.barplot(x=list(df.keys())[0],
@@ -167,10 +168,6 @@ def plot_coverage(fasta,count_table): #plots coverage per sample after alignment
     
     #plot coverage per sample
     plot(df,"Fold sequence coverage per sample",plot_file)
-
-
-
-
 
 
 

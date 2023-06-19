@@ -1,4 +1,4 @@
-name: trim
+name: mageck_flute
 channels: 
   - bioconda
   - conda-forge

@@ -5,14 +5,11 @@ import os
 import shutil
 import glob
 import click
-
 from ..scripts import utils as utils
-
 
 script_dir, script_file = os.path.split(__file__)
 work_dir = os.getcwd()
 version = "0.1"
-
 
 ####command line parser####
 @click.group()
@@ -24,7 +21,7 @@ def cli():
 @click.command(name='report')
 
 def report():
-    ''' Create html report of data
+    ''' Create HTML report of analysis
     '''
     #create report for previous pipeline run
     click.secho("Creating report of analysis...",fg="green")
@@ -69,8 +66,8 @@ def analysis(threads,slurm,dryrun,verbose):
     #check if files need to be renamed
     experiment = utils.loadYaml("experiment")
     if "rename" in experiment:
-        utils.rename()
-    
+        if not os.path.exists(os.path.join(work_dir,".rename")):
+            utils.rename()
     
     #copy snakemake file to work_dir:
     snakemake_file = os.path.join(script_dir,"src","snakefile")
@@ -82,12 +79,17 @@ def analysis(threads,slurm,dryrun,verbose):
     utils_copy = os.path.join(work_dir,"utils.py")
     shutil.copyfile(utils_file,utils_copy)
     
+    #copy scripts to work_dir
+    os.makedirs(os.path.join(work_dir,"scripts"),exist_ok = True)
+    flute_file = os.path.join(script_dir,"src","flute.R")
+    flute_dest = os.path.join(work_dir,"scripts","flute.R")
+    shutil.copyfile(flute_file,flute_dest)
+    
     #plot DAG
     click.echo("Plotting snakemake DAG")
     dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
     process=subprocess.check_output(dag,shell=True)
-    
-    
+        
     #construct snakemake command
     snakemake = "snakemake --use-conda" 
     
@@ -110,14 +112,16 @@ def analysis(threads,slurm,dryrun,verbose):
     conda_envs = glob.glob(os.path.join(script_dir,"src","*.yaml"))
     to_dir = os.path.join(work_dir,"envs")
     os.makedirs(to_dir,exist_ok = True)
-    
     [shutil.copyfile(x,os.path.join(to_dir,os.path.basename(x))) for x in conda_envs]
-    
-    
+        
     #run snakemake command
-    subprocess.run(snakemake, shell=True)
-    
-       
+    if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
+        subprocess.run(snakemake, shell=True)
+    else: #if is has run before, it probably failed at some step so rerun all failed rules
+        snakemake = f"{snakemake} --rerun-incomplete"
+        subprocess.run(snakemake, shell=True)
+        
+           
 #add subparsers
 cli.add_command(report)
 cli.add_command(analysis)

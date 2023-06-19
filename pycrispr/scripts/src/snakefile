@@ -45,7 +45,11 @@ rule all:
         expand("mageck/{comparison}.log",comparison=COMPARISONS),
         expand("mageck/{comparison}.R",comparison=COMPARISONS),
         expand("mageck/{comparison}.report.Rmd",comparison=COMPARISONS),
-        expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS)
+        expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS),
+        expand("mageck_flute/{comparison}.volcano.pdf", comparison=COMPARISONS),
+        expand("mageck_flute/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
+        expand("mageck_flute/{comparison}.dot_neg.pdf", comparison=COMPARISONS),
+        expand("mageck_flute/{comparison}.sgrank.pdf", comparison=COMPARISONS)
 
 
         
@@ -64,7 +68,7 @@ rule fastqc:
         "v1.31.1/bio/fastqc"
 
 
-rule multiqc_file:
+rule multiqc:
     input:
         expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
     output:
@@ -150,6 +154,24 @@ rule mageck:
         '''
         mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//') -n mageck/{wildcards.comparison} 2> {log}
         '''
+
+
+rule mageck_flute:
+    input:
+        "mageck/{comparison}.gene_summary.txt",
+        "mageck/{comparison}.sgrna_summary.txt"
+    output:
+        "mageck_flute/{comparison}.volcano.pdf",
+        "mageck_flute/{comparison}.dot_pos.pdf",
+        "mageck_flute/{comparison}.dot_neg.pdf",
+        "mageck_flute/{comparison}.sgrank.pdf"
+    params:
+        config["lib_info"][library]["species"]
+    conda:
+        "envs/mageck.yaml"
+    script:
+        "scripts/flute.R"
+
 
 rule plot_alignment_rate:
     input:

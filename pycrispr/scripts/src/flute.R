@@ -43,28 +43,41 @@ sgRankView(sdata, top = 5, bottom = 5)
 dev.off()
 
 #enrichment analysis
-geneList <- gdata$Score
-names(geneList) <- gdata$id
+tryCatch( #analysis can fail if a small gRNA library is used, so skip if any error occurs
+ {
+    geneList <- gdata$Score
+    names(geneList) <- gdata$id
+    
+    enrich_pos <- EnrichAnalyzer(geneList = geneList[geneList > 0.5], 
+                                 method = "GSEA", 
+                                 type = "KEGG",
+                                 organism = snakemake@params[[1]],
+                                 filter = TRUE)
+    
+    pdf(snakemake@output[[5]])
+    EnrichedView(enrich_pos, mode = 1, top = 10, bottom = 0)
+    dev.off()
+    
+    enrich_neg <- EnrichAnalyzer(geneList = geneList[geneList < -0.5], 
+                                 method = "GSEA", 
+                                 type = "KEGG",
+                                 organism = snakemake@params[[1]],
+                                 filter = TRUE)
+    
+    pdf(snakemake@output[[6]])
+    EnrichedView(enrich_neg, mode = 1, top = 0, bottom = 10)
+    dev.off()
+  },
+  error = function(error_message) {
+    message("Skipping enrichment analysis: error was raised by R (most likely caused by using smaller gRNA libraries)")
+    message("This is the R error message:")
+    message(error_message)
+    return(NA)
+  }
+)
 
-enrich_pos <- EnrichAnalyzer(geneList = geneList[geneList > 0.5], 
-                            method = "GSEA", 
-                            type = "KEGG",
-                            organism = snakemake@params[[1]],
-                            filter = TRUE)
 
-pdf(snakemake@output[[5]])
-EnrichedView(enrich_pos, mode = 1, top = 10, bottom = 0)
-dev.off()
 
-enrich_neg <- EnrichAnalyzer(geneList = geneList[geneList < -0.5], 
-                            method = "GSEA", 
-                            type = "KEGG",
-                            organism = snakemake@params[[1]],
-                            filter = TRUE)
-
-pdf(snakemake@output[[6]])
-EnrichedView(enrich_neg, mode = 1, top = 0, bottom = 10)
-dev.off()
 
 
 
