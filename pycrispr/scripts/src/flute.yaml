@@ -1,10 +1,9 @@
 name: mageck_flute
 channels: 
-  - bioconda
   - conda-forge
+  - bioconda
+  - defaults
 dependencies:
-  - python
-  - r
   - bioconductor-mageckflute
   - bioconductor-clusterprofiler
   - r-ggplot2
