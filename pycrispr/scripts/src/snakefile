@@ -67,6 +67,8 @@ rule fastqc:
     log:
         "logs/fastqc/{sample}.log"
     threads: config["resources"]["fastqc"]["cpu"]
+    resources:
+        runtime=config["resources"]["fastqc"]["time"]
     wrapper:
         "v1.31.1/bio/fastqc"
 
@@ -79,6 +81,8 @@ rule multiqc:
     params:
         extra="",  # Optional: extra parameters for multiqc.
         use_input_files_only=True, # Optional, use only a.txt and don't search folder samtools_stats for files
+    resources:
+        runtime=config["resources"]["fastqc"]["time"]
     log:
         "logs/multiqc/multiqc.log"
     wrapper:
@@ -131,8 +135,6 @@ rule join:
         fa=fasta
     output:
         "count/counts-aggregated.tsv"
-    resources:
-        runtime=config["resources"]["short"]["time"]
     run:
         utils.join(params.fa, input.files)
 
@@ -171,8 +173,10 @@ rule mageck_flute:
         report("mageck_flute/{comparison}.sgrank.pdf", caption="report/sgrank.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "sgRNA rank"}),
     params:
         config["lib_info"][library]["species"]
+    resources:
+        runtime=config["resources"]["mageck"]["time"]
     conda:
-        "envs/mageck.yaml"
+        "envs/flute.yaml"
     script:
         "scripts/flute.R"
 
