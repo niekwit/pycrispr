@@ -45,31 +45,36 @@ Getting started with ``pycrispr``
 
 .. code-block:: yaml
 
-   slurm: False #submit jobs to SLURM-based HPC
    rename: #rename to .fq.gz
       L8_S1_L001_R1_001.fastq.gz: L8.fq.gz
       S8_S3_L001_R1_001.fastq.gz: S8.fq.gz
       S15_S4_L001_R1_001.fastq.gz: S15.fq.gz
-   library: dub-only #CRISPR library for current experiment
-   lib_info: #all available CRISPR libraries
-      dub-only:
-         index: /home/user/Documents/references/index/hisat2/dub-only/dub-only-hisat2.index #HISAT2 index path
-         fasta: /home/user/Documents/references/fasta/Human/dub-only/DUBonly.fasta
-         sg_length: 20
-         species: hsa #hsa for human, mmu for mouse
-   mismatch: 0 #number of mismatches allowed during alignment with HISAT2
+   library: kinase
+   lib_info:
+      kinase:
+         index: /home/user/Documents/references/index/hisat2/dub-only/kinase.index
+         fasta: /home/user/Documents/references/fasta/Human/kinase/kinase.fasta
+         sg_length: 20 #length of (shortest) gRNAs in library
+         species: hsa #human,hsa;mouse,mmu 
+      bassik:
+         index: /home/user/Documents/references/index/hisat2/bassik/bassik-index
+         fasta: /home/user/Documents/references/fasta/Human/Bassik-library/bassik_lib.fasta
+         sg_length: 17
+         species: hsa
+   mismatch: 0 #mismatches allowed during alignment
+   left_trim: 0 #number of nulceotides to trim on 5' end of reads
    stats: 
       type: mageck
-      comparisons: #test vs control 
-         1: S8_vs_L8 #sample names are file names without extension
-         2: S15_vs_L8
-         3: S8,S15_vs_L8 # samples can be pooled together
+      comparisons: #test vs control
+            1: S8_vs_L8 #sample names are file names without extension
+            2: S15_vs_L8
    resources:
-      account: SLURM_ACCOUNT_NAME #only for HPC use
-      partition: PARTITION #only for HPC use
+      account: JNATHAN-SL3-CPU
+      partition: cclake
+      max_jobs: 100 #maximum number of parallel jobs
       short:
          cpu: 1
-         time: 15 # in minutes; only for HPC use
+         time: 15 # in minutes
       trim:
          cpu: 4
          time: 60
@@ -91,14 +96,14 @@ Preparing CRISPR-Cas9 screen data
 Before running ``pycrispr`` an analysis directory has to be created (can be any name or location), and should contain a sub-directory called *reads*. This sub-directory contains all the fastq files of your CRISPR-Cas9 screen experiment::
 
    analysis_dir
-   └── reads
-    	├── L8_S1_L001_R1_001.fastq.gz
-    	├── S8_S3_L001_R1_001.fastq.gz
-    	└── S15_S4_L001_R1_001.fastq.gz
+   ├── reads
+   | 	├── L8_S1_L001_R1_001.fastq.gz
+   | 	├── S8_S3_L001_R1_001.fastq.gz
+   | 	└── S15_S4_L001_R1_001.fastq.gz
    └── experiment.yaml 
 
 
-.. important:: Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paried-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence.
+.. important:: Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paired-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence, but the first *n* nucleotides can be skipped by setting `left_trim` to *n* in `experiment.yaml` if this is different.
 
 
 Initiating the pipeline
@@ -118,45 +123,61 @@ Output files
 Multiple output files will be generated::
 
    analysis_dir
-   └── count
+   ├── count
    |   ├── alignment-rates.pdf
    |   ├── counts-aggregated.tsv
    |   ├── L8.guidecounts.txt
    |   ├── S15.guidecounts.txt
    |   ├── S8.guidecounts.txt
    |   └── sequence-coverage.pdf
-   └── envs
+   ├── envs
    |   ├── count.yaml
    |   ├── flute.yaml
    |   ├── join.yaml
    |   ├── mageck.yaml
    |   └── trim.yaml
-   └── logs
+   ├── logs
    |   ├── count
    |   ├── fastqc
    |   ├── mageck
    |   ├── multiqc
    |   └── trim
-   └── mageck
-   └── mageck_flute
-   └── qc
-   └── reads
+   ├── mageck
+   ├── mageck_flute
+   ├── qc
+   ├── reads
    | 	├── L8.fq.gz
    | 	├── S8.fq.gz
    | 	└── S15.fq.gz
-   └── scripts
+   ├── scripts
    |   └── flute.R
    ├── dag.pdf
    ├── experiment.yaml
    ├── snakefile
    └── utils.py
 
-
+``pycrispr`` will first create a Directed acyclic graph (DAG) for the current workflow.
 
 .. figure:: dag.png
    :align: center
 
    Directed acyclic graph (DAG) for workflow
+
+Graphs showing the alignment rates and the fold sequence coverage can be found in the *count* directory.
+
+.. figure:: alignment-rates.png
+   :align: center
+
+   Alignment rates for each sample
+
+.. figure:: sequence-coverage.png
+   :align: center
+
+   Fold sequence coverage for each sample (number of aligned reads divided by number of gRNAs in library)
+
+
+
+
 
 
 
