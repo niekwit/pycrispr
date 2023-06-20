@@ -1,0 +1,1 @@
+Fold sequence coverage per sample
