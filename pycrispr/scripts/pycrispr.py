@@ -96,15 +96,15 @@ def analysis(threads,slurm,dryrun,verbose):
     snakemake = "snakemake --use-conda" 
     
     if verbose:
-        snakemake = f"{snakemake} -p" #-p prints shell commands
+        snakemake = f"{snakemake} -p" #prints shell commands
     if dryrun:
         click.echo("Dry run only")
         snakemake = f"{snakemake} -n"
     if slurm:
         #load slurm default resources
-        slurm = utils.loadYaml("slurm")
-        account = slurm["account"]
-        partition = slurm("partition")
+        slurm = utils.loadYaml("experiment")
+        account = slurm["resources"]["account"]
+        partition = slurm["resources"]["partition"]
         
         snakemake = f"{snakemake} --slurm --default-resources slurm_account={account} slurm_partition={partition}"
     else:
