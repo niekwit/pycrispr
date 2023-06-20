@@ -2,3 +2,4 @@ recursive-include pycrispr/scripts/src/ *.yaml
 include pycrispr/scripts/src/snakefile
 recursive-include pycrispr/scripts/src/ *.R
 recursive-include pycrispr/scripts/src/report *.rst
+recursive-include pycrispr/scripts/src/python *.py

@@ -1,6 +1,5 @@
 import glob
 import os
-import utils #helper functions
 
 #get script directory (git repository)
 script_dir = os.path.dirname(__file__)
@@ -13,7 +12,6 @@ configfile: "experiment.yaml"
 
 #load variables
 library = config["library"]
-
 fasta = config["lib_info"][library]["fasta"]
 index = config["lib_info"][library]["index"]
 sg_length = config["lib_info"][library]["sg_length"]
@@ -47,7 +45,7 @@ rule all:
         expand("mageck/{comparison}.gene_summary.txt", comparison=COMPARISONS),
         expand("mageck/{comparison}.log", comparison=COMPARISONS),
         expand("mageck/{comparison}.R", comparison=COMPARISONS),
-        expand("mageck/{comparison}.report.Rmd", comparison=COMPARISONS),
+        #expand("mageck/{comparison}.report.Rmd", comparison=COMPARISONS),
         expand("mageck/{comparison}.sgrna_summary.txt", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.volcano.pdf", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
@@ -77,7 +75,7 @@ rule multiqc:
     input:
         expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES)
     output:
-        report("qc/multiqc.html", caption = "report/multiqc.rst", category = "MultiQC analysis of fastq files")
+        report("qc/multiqc.html", caption="report/multiqc.rst", category="MultiQC analysis of fastq files")
     params:
         extra="",  # Optional: extra parameters for multiqc.
         use_input_files_only=True, # Optional, use only a.txt and don't search folder samtools_stats for files
@@ -131,12 +129,12 @@ rule count:
 rule join:
     input:
         files=expand("count/{sample}.guidecounts.txt", sample=SAMPLES)
-    params:
-        fa=fasta
     output:
         "count/counts-aggregated.tsv"
-    run:
-        utils.join(params.fa, input.files)
+    params:
+        fa=fasta,
+    script:
+        "scripts/join.py"
 
 
 rule mageck:
@@ -144,10 +142,10 @@ rule mageck:
         "count/counts-aggregated.tsv"
     output:
         "mageck/{comparison}_summary.Rnw",
-        report("mageck/{comparison}.gene_summary.txt", caption = "report/mageck.rst", category = "MAGeCK"),
+        report("mageck/{comparison}.gene_summary.txt", caption="report/mageck.rst", category="MAGeCK"),
         "mageck/{comparison}.log",
         "mageck/{comparison}.R",
-        "mageck/{comparison}.report.Rmd",
+        #"mageck/{comparison}.report.Rmd",
         "mageck/{comparison}.sgrna_summary.txt",
         "mageck/{comparison}.normalized.txt"
     resources:
@@ -172,7 +170,7 @@ rule mageck_flute:
         report("mageck_flute/{comparison}.dot_neg.pdf", caption="report/dot-plot_neg.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot depleted genes"}),
         report("mageck_flute/{comparison}.sgrank.pdf", caption="report/sgrank.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "sgRNA rank"}),
     params:
-        config["lib_info"][library]["species"]
+        spc=config["lib_info"][library]["species"],
     resources:
         runtime=config["resources"]["mageck"]["time"]
     conda:
@@ -186,18 +184,22 @@ rule plot_alignment_rate:
         expand("logs/count/{sample}.log", sample=SAMPLES)
     output:
         report("count/alignment-rates.pdf", caption="report/alignment-rates.rst", category="Alignment rates")
-    run:
-        utils.plot_alignment_rate(input)
+    params:
+        name="plot_alignment_rate",
+    script:
+        "scripts/plot.py"
 
 
 rule plot_coverage:
     input:
+        "count/counts-aggregated.tsv",
+    params:
+        name="plot_coverage",
         fa=fasta,
-        cnt="count/counts-aggregated.tsv"
     output:
         report("count/sequence-coverage.pdf", caption="report/plot-coverage.rst", category="Sequence coverage")
-    run:
-        utils.plot_coverage(input.fa, input.cnt)
+    script:
+        "scripts/plot.py"
 
 
 

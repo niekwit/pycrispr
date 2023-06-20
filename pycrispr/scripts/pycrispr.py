@@ -5,17 +5,48 @@ import os
 import shutil
 import glob
 import click
-from ..scripts import utils as utils
+import yaml
+from pathlib import Path
 
 script_dir, script_file = os.path.split(__file__)
 work_dir = os.getcwd()
 version = "0.1"
 
+####Python functions####
+
+def loadYaml():
+    '''Load experiment.yaml as dictionary
+    '''    
+    with open("experiment.yaml") as f:
+        doc = yaml.safe_load(f)
+    return(doc)
+
+
+def rename():
+    ''' Renames fastq files according experiment.yaml
+    '''
+    click.echo("Renaming fastq files according to experiment.yaml")
+    
+    yaml = loadYaml()
+    
+    rename = yaml["rename"]
+
+    old_names = list(rename.keys())
+    new_names = list(yaml["rename"].values())
+    
+    for old,new in zip(old_names,new_names):
+        os.rename(os.path.join("reads",old),
+                  os.path.join("reads",new))
+    
+    #create hidden file to mark that renaming has been performed
+    Path(os.path.join(".rename")).touch()
+
+
 ####command line parser####
 @click.group()
 def cli():
-    """Snakemake-based CRISPR-Cas9 screen analysis pipeline
-    """
+    '''Snakemake-based CRISPR-Cas9 screen analysis pipeline
+    '''
         
 
 @click.command(name='report')
@@ -65,26 +96,25 @@ def analysis(threads,slurm,dryrun,verbose):
     threads = str(threads)    
     
     #check if files need to be renamed
-    experiment = utils.loadYaml("experiment")
+    experiment = loadYaml()
     if "rename" in experiment:
         if not os.path.exists(os.path.join(work_dir,".rename")):
-            utils.rename()
+            rename()
     
     #copy snakemake file to work_dir:
     snakemake_file = os.path.join(script_dir,"src","snakefile")
     snakemake_copy = os.path.join(work_dir,"snakefile")
     shutil.copyfile(snakemake_file,snakemake_copy)
     
-    #copy utils to work_dir
-    utils_file = os.path.join(script_dir,"utils.py")
-    utils_copy = os.path.join(work_dir,"utils.py")
-    shutil.copyfile(utils_file,utils_copy)
-    
-    #copy scripts to work_dir
-    os.makedirs(os.path.join(work_dir,"scripts"),exist_ok = True)
+    #copy R script to work_dir
+    os.makedirs(os.path.join(work_dir,"scripts"),exist_ok=True)
     flute_file = os.path.join(script_dir,"src","flute.R")
     flute_dest = os.path.join(work_dir,"scripts","flute.R")
     shutil.copyfile(flute_file,flute_dest)
+    
+    #copy Python scripts to work_dir
+    python_files = glob.glob(os.path.join(script_dir,"src","python","*.py"))
+    [shutil.copyfile(x,os.path.join(work_dir,"scripts",os.path.basename(x))) for x in python_files]
     
     #plot DAG
     if not os.path.exists("dag.pdf"):
@@ -93,7 +123,7 @@ def analysis(threads,slurm,dryrun,verbose):
         process=subprocess.check_output(dag,shell=True)
         
     #construct snakemake command
-    snakemake = "snakemake --use-conda" 
+    snakemake = "snakemake --use-conda --output-wait 20" 
     
     if verbose:
         snakemake = f"{snakemake} -p" #prints shell commands
@@ -102,20 +132,19 @@ def analysis(threads,slurm,dryrun,verbose):
         snakemake = f"{snakemake} -n"
     if slurm:
         #load slurm default resources
-        slurm = utils.loadYaml("experiment")
+        slurm = loadYaml()
         account = slurm["resources"]["account"]
         partition = slurm["resources"]["partition"]
         max_jobs = slurm["resources"]["max_jobs"]
         
-        snakemake = f"{snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition}"
+        snakemake = f"nohup {snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition} >> logs/terminal.log &" #run snakemake in background with nohup
     else:
         snakemake = f"{snakemake} --cores {threads}"
 
     #copy conda envs yamls to work_dir
     conda_envs = glob.glob(os.path.join(script_dir,"src","*.yaml"))
-    to_dir = os.path.join(work_dir,"envs")
-    os.makedirs(to_dir,exist_ok = True)
-    [shutil.copyfile(x,os.path.join(to_dir,os.path.basename(x))) for x in conda_envs]
+    os.makedirs("envs",exist_ok = True)
+    [shutil.copyfile(x,os.path.join(work_dir,"envs",os.path.basename(x))) for x in conda_envs]
         
     #run snakemake command
     if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
