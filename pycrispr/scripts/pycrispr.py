@@ -105,8 +105,9 @@ def analysis(threads,slurm,dryrun,verbose):
         slurm = utils.loadYaml("experiment")
         account = slurm["resources"]["account"]
         partition = slurm["resources"]["partition"]
+        max_jobs = slurm["resources"]["max_jobs"]
         
-        snakemake = f"{snakemake} --slurm --default-resources slurm_account={account} slurm_partition={partition}"
+        snakemake = f"{snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition}"
     else:
         snakemake = f"{snakemake} --cores {threads}"
 
