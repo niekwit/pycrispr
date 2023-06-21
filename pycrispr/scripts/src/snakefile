@@ -16,27 +16,24 @@ fasta = config["lib_info"][library]["fasta"]
 index = config["lib_info"][library]["index"]
 sg_length = config["lib_info"][library]["sg_length"]
 
-#get sample names
-SAMPLES = [os.path.basename(x).replace(".fq.gz","") for x in glob.glob("reads/*fq.gz")]
-#remove any pre-existing trimmed fq files from this list
-SAMPLES = [x for x in SAMPLES if not "_trimmed" in x]
+#check if read files need to be renamed
+if "rename" in config and not os.path.exists("rename.done"):
+    OLD_FILES = list(config["rename"].keys())
+    NEW_FILES = list(config["rename"].values())
+
+    #create sample names
+    SAMPLES = [x.replace(".fq.gz","") for x in NEW_FILES]
+else:
+    #create sample names
+    SAMPLES = [os.path.basename(x).replace(".fq.gz","") for x in glob.glob("reads/*fq.gz")]
+    #remove any pre-existing trimmed fq files from this list
+    SAMPLES = [x for x in SAMPLES if not "_trimmed" in x]
 
 #load mageck settings
-COMPARISONS = [value for (key,value) in config["stats"]["comparisons"].items()]
+COMPARISONS = [value.replace(",","-") for (key,value) in config["stats"]["comparisons"].items()]
 
-
-####SNAKEMAKE RULES####
-
-#report location
-report: "report/report.rst"
-
-#rules to be run on login node instead of compute node when running on HPC (only very small jobs)
-localrules: all, join, plot_alignment_rate, plot_coverage  
-
-#set target rule
-rule all:
-    input:
-        expand("qc/fastqc/{sample}.html", sample=SAMPLES),
+#set targets for target rule
+TARGETS = [expand("qc/fastqc/{sample}.html", sample=SAMPLES),
         expand("qc/fastqc/{sample}_fastqc.zip", sample=SAMPLES),
         "qc/multiqc.html",
         "count/alignment-rates.pdf",
@@ -51,9 +48,42 @@ rule all:
         expand("mageck_flute/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.dot_neg.pdf", comparison=COMPARISONS),
         expand("mageck_flute/{comparison}.sgrank.pdf", comparison=COMPARISONS)
+        ]
 
 
-        
+
+####SNAKEMAKE RULES####
+
+#report location
+report: "report/report.rst"
+
+#rules to be run on login node instead of compute node when running on HPC (only very small jobs)
+localrules: all, rename, join, plot_alignment_rate, plot_coverage  
+
+#extend TARGETS with renamed files if required
+if "rename" in config and not os.path.exists("rename.done"):
+    TARGETS.extend(expand("reads/{new_file}", new_file=NEW_FILES)),
+    TARGETS.append("rename.done")
+
+
+#set target rule
+rule all:
+    input:
+        TARGETS
+
+
+if "rename" in config and not os.path.exists("rename.done"):
+    rule rename:
+        input:
+            expand("reads/{old_file}", old_file=OLD_FILES)
+        output:
+            f=expand("reads/{new_file}", new_file=NEW_FILES),
+            t=touch("rename.done"),
+        run:
+            for o,n in zip(list({input})[0], list({output.f})[0]):
+                os.rename(o,n)
+
+
 rule fastqc:
     input:
         "reads/{sample}_trimmed.fq.gz"
@@ -156,7 +186,7 @@ rule mageck:
         "logs/mageck/{comparison}.log"
     shell:
         '''
-        mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//') -n mageck/{wildcards.comparison} 2> {log}
+        mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//' | sed 's/-/,/') -n mageck/{wildcards.comparison} 2> {log}
         '''
 
 

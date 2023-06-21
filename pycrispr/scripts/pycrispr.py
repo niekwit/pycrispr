@@ -6,7 +6,6 @@ import shutil
 import glob
 import click
 import yaml
-from pathlib import Path
 
 script_dir, script_file = os.path.split(__file__)
 work_dir = os.getcwd()
@@ -20,26 +19,6 @@ def loadYaml():
     with open("experiment.yaml") as f:
         doc = yaml.safe_load(f)
     return(doc)
-
-
-def rename():
-    ''' Renames fastq files according experiment.yaml
-    '''
-    click.echo("Renaming fastq files according to experiment.yaml")
-    
-    yaml = loadYaml()
-    
-    rename = yaml["rename"]
-
-    old_names = list(rename.keys())
-    new_names = list(yaml["rename"].values())
-    
-    for old,new in zip(old_names,new_names):
-        os.rename(os.path.join("reads",old),
-                  os.path.join("reads",new))
-    
-    #create hidden file to mark that renaming has been performed
-    Path(os.path.join(".rename")).touch()
 
 
 ####command line parser####
@@ -94,13 +73,7 @@ def analysis(threads,slurm,dryrun,verbose):
     
     #total threads for local pipeline run
     threads = str(threads)    
-    
-    #check if files need to be renamed
-    experiment = loadYaml()
-    if "rename" in experiment:
-        if not os.path.exists(os.path.join(work_dir,".rename")):
-            rename()
-    
+   
     #copy snakemake file to work_dir:
     snakemake_file = os.path.join(script_dir,"src","snakefile")
     snakemake_copy = os.path.join(work_dir,"snakefile")
