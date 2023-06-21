@@ -68,6 +68,7 @@ Getting started with ``pycrispr``
       comparisons: #test vs control
             1: S8_vs_L8 #sample names are file names without extension
             2: S15_vs_L8
+            3: S8,S15_vs_L8 #samples can be pooled
    resources:
       account: JNATHAN-SL3-CPU
       partition: cclake
@@ -176,9 +177,19 @@ Graphs showing the alignment rates and the fold sequence coverage can be found i
    Fold sequence coverage for each sample (number of aligned reads divided by number of gRNAs in library)
 
 
+Report
+------------------------------------
 
+After the analysis has finished, an HTML report can be generated:
 
+.. code-block:: console
 
+   $ pycrispr report
 
+This report will be located in the analysis directory (pycrispr-report.html).
 
+.. figure:: report.png
+   :align: center
+
+   `snakemake` HTML report
    
