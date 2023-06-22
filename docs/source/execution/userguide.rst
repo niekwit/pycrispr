@@ -3,9 +3,11 @@ User guide
 
 All options
 -------------
-.. click:: module:parser
+
+
+.. click:: pycrispr:analysis
    :prog: pycrispr
-   :show-nested:
+   :nested: full
 
 
 Getting started with ``pycrispr``
