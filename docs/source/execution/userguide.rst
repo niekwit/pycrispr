@@ -5,7 +5,7 @@ All options
 -------------
 
 
-.. click:: commands.pycrispr:analysis
+.. click:: pycrispr.scripts.pycrispr:cli
    :prog: pycrispr
    :nested: full
 
