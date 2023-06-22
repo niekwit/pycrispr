@@ -1,42 +1,11 @@
 User guide
 ************
 
-Show *pycrispr* help messages
-------------------------------------
-To display the ``pycrispr`` help message, use this command:
-
-.. code-block:: console
-   
-   $ pycrispr --help
-   Usage: pycrispr [OPTIONS] COMMAND [ARGS]...
-
-   Snakemake-based CRISPR-Cas9 screen analysis pipeline
-
-   Options:
-      --help  Show this message and exit.
-
-   Commands:
-      analysis  Run CRISPR-Cas9 screen analysis pipeline
-      report    Create HTML report of analysis
-
-This shows all available functionalities, which also have their own help messages, for example:
-
-.. code-block:: console
-
-   $ pycrispr analysis --help
-   Usage: pycrispr analysis [OPTIONS]
-
-      Run CRISPR-Cas9 screen analysis pipeline
-
-   Options:
-      -t, --threads INTEGER  Total number of CPU threads to use for local analysis
-                              [default: 1]
-      -s, --slurm            Run pipeline on SLURM-based HPC
-      -d, --dryrun           Dry run for running pipeline (helpful for testing if
-                              pipeline works)
-      -v, --verbose          Increase verbosity
-      --help                 Show this message and exit.
-
+All options
+-------------
+.. click:: module:parser
+   :prog: pycrispr
+   :show-nested:
 
 
 Getting started with ``pycrispr``
