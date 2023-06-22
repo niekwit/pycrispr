@@ -57,6 +57,12 @@ def report():
 @click.option("-s","--slurm", 
               is_flag=True,
               help="Run pipeline on SLURM-based HPC")
+@click.option("-b","--background", 
+              is_flag=True,
+              help="Run pipeline in the background with nohup (stdin/stderr will be directed to logs/terminal.log)")
+@click.option("-c","--noconda", 
+              is_flag=True,
+              help="Disable jobs from running in a Conda environment (not recommended)")
 @click.option("-d","--dryrun", 
               is_flag=True,
               help="Dry run for running pipeline (helpful for testing if pipeline works)")
@@ -66,7 +72,7 @@ def report():
               help="Increase verbosity")
 
 
-def analysis(threads,slurm,dryrun,verbose):
+def analysis(threads,slurm,background,noconda,dryrun,verbose):
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
@@ -96,24 +102,27 @@ def analysis(threads,slurm,dryrun,verbose):
         process=subprocess.check_output(dag,shell=True)
         
     #construct snakemake command
-    snakemake = "snakemake --use-conda --output-wait 20" 
-    
+    snakemake = "snakemake --output-wait 20" 
+    if not noconda:
+        snakemake = "f{snakemake} --use-conda" 
     if verbose:
         snakemake = f"{snakemake} -p" #prints shell commands
     if dryrun:
         click.echo("Dry run only")
         snakemake = f"{snakemake} -n"
     if slurm:
+        click.echo("Analysis is running in the background (nohup)")
+        click.echo("Terminal output can be found in logs/terminal.log")
         #load slurm default resources
         slurm = loadYaml()
         account = slurm["resources"]["account"]
         partition = slurm["resources"]["partition"]
         max_jobs = slurm["resources"]["max_jobs"]
         
-        snakemake = f"nohup {snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition} >> logs/terminal.log &" #run snakemake in background with nohup
+        snakemake = f"{snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition}" #run snakemake in background with nohup
     else:
         snakemake = f"{snakemake} --cores {threads}"
-
+    
     #copy conda envs yamls to work_dir
     conda_envs = glob.glob(os.path.join(script_dir,"src","*.yaml"))
     os.makedirs("envs",exist_ok = True)
@@ -121,9 +130,15 @@ def analysis(threads,slurm,dryrun,verbose):
         
     #run snakemake command
     if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
+        if background: #check if it needs to run in the background (nohup)
+            os.makedirs("logs", exist_ok=True)
+            snakemake = f"nohup {snakemake} >> logs/terminal.log &"
         subprocess.run(snakemake, shell=True)
-    else: #if is has run before, it probably failed at some step so rerun all failed rules
+    else: #if it has run before, it probably failed at some step so rerun all failed rules
         snakemake = f"{snakemake} --rerun-incomplete"
+        if background:
+            os.makedirs("logs", exist_ok=True)
+            snakemake = f"nohup {snakemake} >> logs/terminal.log &"
         subprocess.run(snakemake, shell=True)
         
            
