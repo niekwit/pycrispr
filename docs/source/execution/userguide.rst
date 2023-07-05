@@ -3,6 +3,9 @@ User guide
 
 All options
 -------------
+.. click:: pycrispr.scripts.pycrispr:cli
+   :prog: pycrispr 
+   :nested: full
 
 .. click:: pycrispr.scripts.pycrispr:analysis
    :prog: pycrispr analysis
