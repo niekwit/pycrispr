@@ -4,9 +4,13 @@ User guide
 All options
 -------------
 
-
 .. click:: pycrispr.scripts.pycrispr:analysis
-   :prog: pycrispr
+   :prog: pycrispr analysis
+   :nested: full
+
+
+.. click:: pycrispr.scripts.pycrispr:report
+   :prog: pycrispr report
    :nested: full
 
 
