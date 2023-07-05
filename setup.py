@@ -10,8 +10,7 @@ setup(
     author_email='nw416@cam.ac.uk',
     license='GPL-3.0 license',
     packages=find_packages(),
-    install_requires=['seaborn','matplotlib','numpy','pandas','pyyaml',
-                      'tqdm','cutadapt', 'multiqc','Click'
+    install_requires=['numpy','pandas','pyyaml','Click','sphinx_click'
                       ],
     classifiers=[
         'Development Status :: 1 - Planning',
