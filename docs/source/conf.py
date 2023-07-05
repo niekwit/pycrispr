@@ -1,3 +1,9 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath('../..'))
+
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -13,7 +19,7 @@ author = 'Niek Wit'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx_click.ext']
+extensions = ['sphinx_click']
 
 templates_path = ['_templates']
 exclude_patterns = []
