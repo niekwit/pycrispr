@@ -3,6 +3,4 @@ channels:
   - annaconda
   - conda-forge
 dependencies:
-  - python
-  - click
-  - pandas
+  - python=3.10

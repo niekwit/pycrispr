@@ -1,6 +1,8 @@
 name: trim
 channels: 
+  - conda-forge
   - bioconda
+  - defaults
 dependencies:
-  - python
-  - cutadapt
+  - python=3.10
+  - cutadapt=4.4

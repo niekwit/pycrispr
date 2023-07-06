@@ -1,6 +1,8 @@
 name: mageck
 channels: 
+  - conda-forge
   - bioconda
+  - defaults
 dependencies:
-  - python
-  - mageck
+  - python=3.10
+  - mageck=0.5.9

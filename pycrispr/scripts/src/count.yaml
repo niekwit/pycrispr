@@ -1,6 +1,8 @@
 name: count
 channels: 
+  - conda-forge
   - bioconda
+  - defaults
 dependencies:
-  - python
-  - hisat2
+  - python=3.10
+  - hisat2=2.2.1
