@@ -21,9 +21,15 @@ def loadYaml():
     return(doc)
 
 
+def bg_msg(): #background message function
+        click.echo("Pipeline will run in the background (nohup)")
+        click.echo("Terminal output can be found in logs/terminal.log")
+
+
 ####command line parser####
 @click.group()
 def cli():
+    
     '''Snakemake-based CRISPR-Cas9 screen analysis pipeline
     '''
         
@@ -31,6 +37,7 @@ def cli():
 @click.command(name='report')
 
 def report():
+    
     ''' Create HTML report of analysis
     '''
     #create report for previous pipeline run
@@ -73,6 +80,7 @@ def report():
 
 
 def analysis(threads,slurm,background,noconda,dryrun,verbose):
+    
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
@@ -98,21 +106,20 @@ def analysis(threads,slurm,background,noconda,dryrun,verbose):
     #plot DAG
     if not os.path.exists("dag.pdf"):
         click.echo("Plotting snakemake DAG")
-        dag = "snakemake --forceall --dag | dot -Tpdf > dag.pdf"
+        dag = "snakemake --forceall --dag | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > dag.pdf"
         process=subprocess.check_output(dag,shell=True)
         
     #construct snakemake command
     snakemake = "snakemake --output-wait 20" 
     if not noconda:
-        snakemake = "f{snakemake} --use-conda" 
+        snakemake = f"{snakemake} --use-conda" 
     if verbose:
         snakemake = f"{snakemake} -p" #prints shell commands
     if dryrun:
         click.echo("Dry run only")
         snakemake = f"{snakemake} -n"
     if slurm:
-        click.echo("Analysis is running in the background (nohup)")
-        click.echo("Terminal output can be found in logs/terminal.log")
+        click.echo("Submitting pipeline to Slurm workload manager")
         #load slurm default resources
         slurm = loadYaml()
         account = slurm["resources"]["account"]
@@ -129,16 +136,19 @@ def analysis(threads,slurm,background,noconda,dryrun,verbose):
     [shutil.copyfile(x,os.path.join(work_dir,"envs",os.path.basename(x))) for x in conda_envs]
         
     #run snakemake command
+            
     if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
         if background: #check if it needs to run in the background (nohup)
             os.makedirs("logs", exist_ok=True)
             snakemake = f"nohup {snakemake} >> logs/terminal.log &"
+            bg_msg()
         subprocess.run(snakemake, shell=True)
     else: #if it has run before, it probably failed at some step so rerun all failed rules
         snakemake = f"{snakemake} --rerun-incomplete"
         if background:
             os.makedirs("logs", exist_ok=True)
             snakemake = f"nohup {snakemake} >> logs/terminal.log &"
+            bg_msg()
         subprocess.run(snakemake, shell=True)
         
            
