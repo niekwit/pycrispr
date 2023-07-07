@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pycrispr',
-    version='0.1.0',
+    version='1.0.0',
     py_modules=['pycrispr'], 
     description='A package for CRISPR-Cas9 screen analysis',
     url='https://github.com/niekwit/pycrispr',
