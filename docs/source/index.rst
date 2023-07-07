@@ -27,6 +27,7 @@ pycrispr
   :caption: Project information
   :maxdepth: 2
 
+  about/citation
   about/about
 
 Links
