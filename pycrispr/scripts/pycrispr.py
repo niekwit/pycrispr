@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import subprocess
 import os
 import shutil
@@ -9,7 +10,7 @@ import yaml
 
 script_dir, script_file = os.path.split(__file__)
 work_dir = os.getcwd()
-version = "0.1"
+
 
 ####Python functions####
 
@@ -34,28 +35,6 @@ def cli():
     '''
         
 
-@click.command(name='report')
-
-def report():
-    
-    ''' Create HTML report of analysis
-    '''
-    #create report for previous pipeline run
-    click.secho("Creating report of analysis...",fg="green")
-    
-    #copy report files to work_dir
-    shutil.copytree(os.path.join(script_dir,"src","report"),
-                    os.path.join(work_dir,"report"), 
-                    dirs_exist_ok=True)
-        
-    #create command
-    report = "snakemake --report pycrispr-report.html"
-    
-    #run command
-    subprocess.run(report, shell=True)
-    return
-
-
 @click.command(name='analysis')
 @click.option("-t","--threads", 
               default=1, 
@@ -73,16 +52,25 @@ def report():
 @click.option("-d","--dryrun", 
               is_flag=True,
               help="Dry run for running pipeline (helpful for testing if pipeline works)")
+@click.option("-r","--cleanup", 
+              is_flag=True,
+              help="Cleanup unused conda environments and packages")
 @click.option("-v","--verbose", 
               show_default=True,
               is_flag=True,
               help="Increase verbosity")
 
 
-def analysis(threads,slurm,background,noconda,dryrun,verbose):
+def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
     
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
+    if cleanup:
+        click.secho("Cleaning up unused Conda packages and environment...",fg="green")
+        subprocess.run("snakemake --cores 1 --conda-cleanup-envs --conda-cleanup-pkgs cache", shell=True)
+        click.secho("Done!",fg="green")
+        sys.exit(0)
+    
     click.secho("CRISPR-Cas9 screen analysis with pycrispr",fg="green")
     
     #total threads for local pipeline run
@@ -135,8 +123,7 @@ def analysis(threads,slurm,background,noconda,dryrun,verbose):
     os.makedirs("envs",exist_ok = True)
     [shutil.copyfile(x,os.path.join(work_dir,"envs",os.path.basename(x))) for x in conda_envs]
         
-    #run snakemake command
-            
+    #run snakemake command    
     if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
         if background: #check if it needs to run in the background (nohup)
             os.makedirs("logs", exist_ok=True)
@@ -150,11 +137,47 @@ def analysis(threads,slurm,background,noconda,dryrun,verbose):
             snakemake = f"nohup {snakemake} >> logs/terminal.log &"
             bg_msg()
         subprocess.run(snakemake, shell=True)
+
+
+@click.command(name='report')
+
+def report():
+    
+    ''' Create HTML report of analysis
+    '''
+    #create report for previous pipeline run
+    click.secho("Creating report of analysis...",fg="green")
+    
+    #copy report files to work_dir
+    shutil.copytree(os.path.join(script_dir,"src","report"),
+                    os.path.join(work_dir,"report"), 
+                    dirs_exist_ok=True)
         
+    #create command
+    report = "snakemake --report pycrispr-report.html"
+    
+    #run command
+    subprocess.run(report, shell=True)
+    return
+
+
+@click.command(name='version')
+
+def version():
+    
+    ''' Display version of pycrispr
+    '''
+    version = "1.0.0"
+    
+    #create report for previous pipeline run
+    click.secho(f"pycrispr v{version}",fg="green")
+    
+    return
            
 #add subparsers
-cli.add_command(report)
 cli.add_command(analysis)
+cli.add_command(report)
+cli.add_command(version)
 
     
         
