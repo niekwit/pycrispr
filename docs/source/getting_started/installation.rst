@@ -17,7 +17,7 @@ The following steps are required to install ``pycrispr``:
 
 .. code-block:: console
    
-   $ curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh | bash"
+   $ curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh" | bash
 
 .. note:: Although highly recommended, using Conda/Mamba is not an absolute requirement. Using the ``pycrispr`` flags -c/--noconda, the Conda/Mamba requirement can be bypassed. However, it is then up to the user to install all the software and make sure they are set as environment variables.  
 
@@ -62,10 +62,16 @@ To update pycrispr to the latest version run:
    $  pip install --upgrade .
 
 
-Installation via Python Packaging Index (PyPi)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installation of stable version via Python Packaging Index (PyPi)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. attention:: This is not available yet.
+.. code-block:: console
+
+   $  pip install pycrispr
+
+
+
+
 
 
 

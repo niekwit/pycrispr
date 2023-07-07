@@ -167,7 +167,7 @@ def version():
     
     ''' Display version of pycrispr
     '''
-    version = "1.0.0"
+    version = "1.0.1"
     
     #create report for previous pipeline run
     click.secho(f"pycrispr v{version}",fg="green")

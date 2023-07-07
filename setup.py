@@ -1,11 +1,20 @@
 from setuptools import setup, find_packages
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.rst").read_text()
 
 setup(
     name='pycrispr',
-    version='1.0.0',
+    version='1.0.1',
     py_modules=['pycrispr'], 
     description='A package for CRISPR-Cas9 screen analysis',
-    url='https://github.com/niekwit/pycrispr',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    project_urls={
+        'Documentation': 'https://pycrispr.readthedocs.io/',
+        'Source': 'https://github.com/niekwit/pycrispr',
+    },
     author='Niek Wit',
     author_email='nw416@cam.ac.uk',
     license='GPL-3.0 license',
@@ -13,9 +22,9 @@ setup(
     install_requires=['pyyaml','Click','sphinx-click'
                       ],
     classifiers=[
-        'Development Status :: 1 - Planning',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: GPL-3.0 License', 
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)', 
         'Operating System :: POSIX :: Linux', 
         'Programming Language :: Python :: 3',
     ],
