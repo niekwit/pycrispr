@@ -76,7 +76,7 @@ Before running ``pycrispr``, an analysis directory has to be created (can be any
    └── experiment.yaml 
 
 
-.. important:: Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paired-end fashion, only include the mate that contains the sgRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the sgRNA sequence, but the first *n* nucleotides can be skipped by setting `left_trim` to *n* in `experiment.yaml` if this is different.
+.. important:: Please note that ``pycrispr`` only accepts single-end NGS data, so if your data was sequenced in a paired-end fashion, only include the read mate that contains the gRNA sequence information (most commonly read 1). It also assumes that the first nucleotide sequenced is the first nulceotide of the gRNA sequence. If this is not the case, then the first *n* nucleotides can be skipped by setting `left_trim` to *n* in `experiment.yaml`.
 
 
 Initiating the pipeline
@@ -87,7 +87,7 @@ To start the analysis, run:
 
    $ pycrispr analysis -t 24
 
-This will first rename the files according to *experiment.yaml*, use a total of 24 CPU threads, select the *dub-only* sgRNA library, and use MAGeCK for pair-wise comparisons specified in *experiment.yaml*. 
+This will first rename the files according to *experiment.yaml*, use a total of 24 CPU threads, select the *dub-only* gRNA library, and use MAGeCK for pair-wise comparisons specified in *experiment.yaml*. 
 
 
 Output files
