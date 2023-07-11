@@ -6,7 +6,7 @@ long_description = (this_directory / "README.rst").read_text()
 
 setup(
     name='pycrispr',
-    version='1.0.1',
+    version='1.2.0',
     py_modules=['pycrispr'], 
     description='A package for CRISPR-Cas9 screen analysis',
     long_description=long_description,
