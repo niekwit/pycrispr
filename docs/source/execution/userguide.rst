@@ -12,7 +12,7 @@ All options
    :prog: pycrispr report
    :nested: full
 
-Getting started with ``pycrispr``
+Getting started with pycrispr
 ------------------------------------
 ``pycrispr`` requires a YAML file (experiment.yaml) that contains information of the experiment, and available CRISPR sgRNA libraries:
 
@@ -35,7 +35,7 @@ Getting started with ``pycrispr``
          sg_length: 17
          species: hsa
    mismatch: 0 #mismatches allowed during alignment
-   left_trim: 0 #number of nulceotides to trim on 5' end of reads
+   left_trim: 0 #number of nucleotides to trim on 5' end of reads
    stats: 
       type: mageck
       comparisons: #test vs control
@@ -43,15 +43,12 @@ Getting started with ``pycrispr``
             2: S15_vs_L8
             3: S8,S15_vs_L8 #samples can be pooled
    resources:
-      account: JNATHAN-SL3-CPU
+      account: XXX
       partition: cclake
       max_jobs: 100 #maximum number of parallel jobs
-      short:
-         cpu: 1
-         time: 15 # in minutes
       trim:
          cpu: 4
-         time: 60
+         time: 60 #in minutes
       fastqc:
          cpu: 4
          time: 60
@@ -62,12 +59,12 @@ Getting started with ``pycrispr``
          cpu: 1
          time: 60
 
-.. note:: You can delete the rename section if you do not need to rename your files, but please keep in mind that the sample names will be taken from the read files names by removing the file extension. Also, the *comparisons* in the *stats* section should match this.
+.. note:: You can delete/ignore the rename section if you do not need to rename your files, but please keep in mind that the sample names will be taken from the read file names by removing the file extension, which should be *fq.gz*. Also, the *comparisons* in the *stats* section should match this.
 
 
 Preparing CRISPR-Cas9 screen data
 ------------------------------------
-Before running ``pycrispr`` an analysis directory has to be created (can be any name or location), and should contain a sub-directory called *reads*. This sub-directory contains all the fastq files of your CRISPR-Cas9 screen experiment::
+Before running ``pycrispr``, an analysis directory has to be created (can be any name or location), and should contain a sub-directory called *reads*. This sub-directory contains all the fastq files of your CRISPR-Cas9 screen experiment::
 
    analysis_dir
    ├── reads
@@ -117,7 +114,9 @@ Multiple output files will be generated::
    |   ├── multiqc
    |   └── trim
    ├── mageck
+   |   └── many files
    ├── mageck_flute
+   |   └── many files
    ├── qc
    ├── reads
    | 	├── L8.fq.gz
@@ -153,16 +152,17 @@ Graphs showing the alignment rates and the fold sequence coverage can be found i
 Report
 ------------------------------------
 
-After the analysis has finished, an HTML report can be generated:
+After the analysis has finished, a HTML report can be generated (pycrispr-report.html):
 
 .. code-block:: console
 
    $ pycrispr report
 
-This report will be located in the analysis directory (pycrispr-report.html).
+This report will be located in the analysis directory.
 
 .. figure:: report.png
    :align: center
 
    `snakemake` HTML report
-   
+
+

@@ -71,7 +71,17 @@ Installation of stable version via Python Packaging Index (PyPi)
 
 
 
+OPTIONAL: installation of BAGEL2
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Besides *MAGeCK*, ``pycrispr`` can also use *BAGEL2* to perform statistics. However, this would need to be installed by the user itself, as *BAGEL2* is not available in the (Bio)Conda repositories:
 
+.. code-block:: console
+
+   $ cd path/to/clone/bagel2dir
+   $ git clone https://github.com/hart-lab/bagel.git
+
+
+The *BAGEL2* path can then be set in experiment.yaml (stats > bagel2_dir).
 
 
 
