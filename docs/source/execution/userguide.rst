@@ -29,13 +29,14 @@ Getting started with pycrispr
          fasta: /home/user/Documents/references/fasta/Human/kinase/kinase.fasta
          sg_length: 20 #length of (shortest) gRNAs in library
          species: hsa #human,hsa;mouse,mmu 
+         left_trim: 0 #number of nucleotides to trim on 5' end of reads
       bassik:
          index: /home/user/Documents/references/index/hisat2/bassik/bassik-index
          fasta: /home/user/Documents/references/fasta/Human/Bassik-library/bassik_lib.fasta
          sg_length: 17
          species: hsa
+         left_trim: 1 #number of nucleotides to trim on 5' end of reads
    mismatch: 0 #mismatches allowed during alignment
-   left_trim: 0 #number of nucleotides to trim on 5' end of reads
    stats: 
       bagel2_dir: /home/user/Documents/software/bagel2
       type: mageck
