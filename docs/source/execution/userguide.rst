@@ -37,8 +37,9 @@ Getting started with pycrispr
    mismatch: 0 #mismatches allowed during alignment
    left_trim: 0 #number of nucleotides to trim on 5' end of reads
    stats: 
+      bagel2_dir: /home/user/Documents/software/bagel2
       type: mageck
-      comparisons: #test vs control
+      comparisons: #test vs control (only alpha numerical characters allowed, except comma)
             1: S8_vs_L8 #sample names are file names without extension
             2: S15_vs_L8
             3: S8,S15_vs_L8 #samples can be pooled
@@ -55,7 +56,7 @@ Getting started with pycrispr
       count:
          cpu: 8
          time: 120
-      mageck:
+      stats:
          cpu: 1
          time: 60
 

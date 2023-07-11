@@ -142,7 +142,7 @@ rule trim:
         temp("reads/{sample}_trimmed.fq.gz")
     params:
         sgl=sg_length,
-        lt=config["left_trim"],
+        lt=config["lib_info"][library]["left_trim"],
     threads: config["resources"]["trim"]["cpu"]
     conda:
         "envs/trim.yaml"
