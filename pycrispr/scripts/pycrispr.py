@@ -54,7 +54,7 @@ def cli():
               help="Dry run for running pipeline (helpful for testing if pipeline works)")
 @click.option("-r","--cleanup", 
               is_flag=True,
-              help="Cleanup unused conda environments and packages")
+              help="Clean up unused conda environments and packages")
 @click.option("-v","--verbose", 
               show_default=True,
               is_flag=True,
@@ -65,7 +65,13 @@ def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
     
     ''' Run CRISPR-Cas9 screen analysis pipeline
     '''
+    #load experiment settings
+    config = loadYaml()
+    stats = config["stats"]["type"]
+    
+    
     if cleanup:
+        
         click.secho("Cleaning up unused Conda packages and environment...",fg="green")
         subprocess.run("snakemake --cores 1 --conda-cleanup-envs --conda-cleanup-pkgs cache", shell=True)
         click.secho("Done!",fg="green")
@@ -92,30 +98,48 @@ def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
     [shutil.copyfile(x,os.path.join(work_dir,"scripts",os.path.basename(x))) for x in python_files]
     
     #plot DAG
-    if not os.path.exists("dag.pdf"):
-        click.echo("Plotting snakemake DAG")
-        dag = "snakemake --forceall --dag | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > dag.pdf"
-        process=subprocess.check_output(dag,shell=True)
+    if stats == "mageck":
         
+        file = "dag-mageck.pdf"
+    
+    elif stats == "bagel2":
+        
+        file = "dag-bagel2.pdf"    
+            
+    if not os.path.exists(file):
+        
+        click.echo(f"Plotting snakemake DAG for {stats}...")
+        dag = f"snakemake --forceall --dag | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > {file}" 
+        process=subprocess.check_output(dag,shell=True)
+         
     #construct snakemake command
     snakemake = "snakemake --output-wait 20" 
+    
     if not noconda:
+        
         snakemake = f"{snakemake} --use-conda" 
+    
     if verbose:
+        
         snakemake = f"{snakemake} -p" #prints shell commands
+    
     if dryrun:
+        
         click.echo("Dry run only")
         snakemake = f"{snakemake} -n"
+    
     if slurm:
-        click.echo("Submitting pipeline to Slurm workload manager")
+        
+        click.echo("Submitting jobs to Slurm workload manager...")
         #load slurm default resources
-        slurm = loadYaml()
-        account = slurm["resources"]["account"]
-        partition = slurm["resources"]["partition"]
-        max_jobs = slurm["resources"]["max_jobs"]
+        account = config["resources"]["account"]
+        partition = config["resources"]["partition"]
+        max_jobs = config["resources"]["max_jobs"]
         
         snakemake = f"{snakemake} --slurm -j {max_jobs} --default-resources slurm_account={account} slurm_partition={partition}" #run snakemake in background with nohup
+    
     else:
+        
         snakemake = f"{snakemake} --cores {threads}"
     
     #copy conda envs yamls to work_dir
@@ -125,17 +149,23 @@ def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
         
     #run snakemake command    
     if not os.path.isdir(".snakemake/"): #this dir does not exist before first run
+        
         if background: #check if it needs to run in the background (nohup)
+            
             os.makedirs("logs", exist_ok=True)
             snakemake = f"nohup {snakemake} >> logs/terminal.log &"
             bg_msg()
         subprocess.run(snakemake, shell=True)
+    
     else: #if it has run before, it probably failed at some step so rerun all failed rules
         snakemake = f"{snakemake} --rerun-incomplete"
+        
         if background:
+            
             os.makedirs("logs", exist_ok=True)
             snakemake = f"nohup {snakemake} >> logs/terminal.log &"
             bg_msg()
+        
         subprocess.run(snakemake, shell=True)
 
 
@@ -145,6 +175,10 @@ def report():
     
     ''' Create HTML report of analysis
     '''
+    #load experiment settings
+    config = loadYaml()
+    stats = config["stats"]["type"]
+    
     #create report for previous pipeline run
     click.secho("Creating report of analysis...",fg="green")
     
@@ -154,7 +188,7 @@ def report():
                     dirs_exist_ok=True)
         
     #create command
-    report = "snakemake --report pycrispr-report.html"
+    report = f"snakemake --report pycrispr_{stats}-report.html"
     
     #run command
     subprocess.run(report, shell=True)
@@ -167,7 +201,7 @@ def version():
     
     ''' Display version of pycrispr
     '''
-    version = "1.0.1"
+    version = "1.2.0"
     
     #create report for previous pipeline run
     click.secho(f"pycrispr v{version}",fg="green")
