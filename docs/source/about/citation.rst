@@ -15,6 +15,6 @@ BibTeX
 
 Zenodo DOI
 ------------------------------------
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8123740.svg
-   :target: https://doi.org/10.5281/zenodo.8123740
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8135219.svg
+   :target: https://doi.org/10.5281/zenodo.8135219
 
