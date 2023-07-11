@@ -1,0 +1,35 @@
+rename: #rename to .fq.gz
+  L8_S1_L001_R1_001.fastq.gz: L8.fq.gz
+  S8_S3_L001_R1_001.fastq.gz: S8.fq.gz
+  S15_S4_L001_R1_001.fastq.gz: S15.fq.gz
+library: dub-only #CRISPR library for current experiment
+lib_info:
+  dub-only:
+    index: /home/user/Documents/references/index/hisat2/dub-only/dub-only-hisat2.index
+    fasta: /home/user/Documents/references/fasta/Human/dub-only/DUBonly.fasta
+    sg_length: 20
+    species: hsa #hsa for human, mmu for mouse
+    left_trim : 0 #trim n bases from 5' end of reads
+mismatch: 0 #n "mismatches allowed during alignment
+stats: 
+  bagel2_dir: /home/niek/Documents/software/bagel2
+  type: mageck #mageck or bagel2
+  comparisons: #test vs control (only alpha numerical characters allowed, except comma)
+    1: S8_vs_L8
+    2: S15_vs_L8
+resources:
+  account: XXX
+  partition: cclake
+  max_jobs: 100
+  trim:
+    cpu: 4
+    time: 60
+  fastqc:
+    cpu: 4
+    time: 60
+  count:
+    cpu: 8
+    time: 120
+  stats:
+    cpu: 1
+    time: 60
