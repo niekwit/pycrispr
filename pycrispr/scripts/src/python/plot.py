@@ -20,7 +20,7 @@ def plot(df,y_label,save_file):
     sns.barplot(x=list(df.keys())[0],
                     y=list(df.keys())[1],
                     data=df,
-                    color="royalblue",
+                    color="seagreen",
                     edgecolor="black",
                     linewidth=1)
     plt.ylabel(y_label)
