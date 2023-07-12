@@ -5,6 +5,10 @@
     :target: https://pycrispr.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://img.shields.io/pypi/v/pycrispr.svg
+    :target: https://pypi.python.org/pypi/snakemake
+
+
 pycrispr
 ====================================
 
