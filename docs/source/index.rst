@@ -40,6 +40,8 @@ Links
 * `Source code <https://github.com/niekwit/pycrispr/>`_
 * `Report an issue <https://github.com/niekwit/pycrispr/issues>`_
 * `Project page on PyPi <https://pypi.python.org/pypi/pycrispr>`_
+* `Paul Lehner lab website <https://www.lehnerlab.com>`_
+* `James Nathan lab website <https://www.jamesnathanlab.com>`_
 
    
    
