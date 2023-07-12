@@ -6,7 +6,7 @@
     :alt: Documentation Status
 
 .. image:: https://img.shields.io/pypi/v/pycrispr.svg
-    :target: https://pypi.python.org/pypi/snakemake
+    :target: https://pypi.python.org/pypi/pycrispr
 
 
 pycrispr
@@ -39,7 +39,7 @@ Links
 
 * `Source code <https://github.com/niekwit/pycrispr/>`_
 * `Report an issue <https://github.com/niekwit/pycrispr/issues>`_
-* `Project page on PyPi <xxx>`_
+* `Project page on PyPi <https://pypi.python.org/pypi/pycrispr>`_
 
    
    
