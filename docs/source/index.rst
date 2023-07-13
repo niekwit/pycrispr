@@ -8,6 +8,9 @@
 .. image:: https://img.shields.io/pypi/v/pycrispr.svg
     :target: https://pypi.python.org/pypi/pycrispr
 
+.. image:: https://img.shields.io/github/stars/niekwit/pycrispr?style=social
+    :   alt: GitHub stars
+
 
 pycrispr
 ====================================
