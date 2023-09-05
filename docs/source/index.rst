@@ -9,7 +9,7 @@
     :target: https://pypi.python.org/pypi/pycrispr
 
 .. image:: https://img.shields.io/github/stars/niekwit/pycrispr?style=social
-    :   alt: GitHub stars
+    :alt: GitHub stars
 
 
 pycrispr
@@ -18,7 +18,14 @@ pycrispr
 **pycrispr**: a scalable and reproducible pipeline for analysing CRISPR-Cas9 screen data. It implements the `snakemake <https://snakemake.readthedocs.io/en/stable/index.html>`_ workflow management system.
 
 .. toctree::
-   :caption: Getting started
+   :caption: Experimental considerations
+   :maxdepth: 2
+
+   experiment/experiment.rst
+
+
+.. toctree::
+   :caption: Getting started with pycrispr
    :maxdepth: 2
 
    getting_started/requirements
