@@ -1,6 +1,3 @@
-============================
-Experimental considerations
-============================
 
 
 This page will a brief summary of considerations for CRISPR-Cas9 screen experimental design. Please refer to Hanna and Doench (2020) and Doench (2018) for more details (see references below).
@@ -69,18 +66,49 @@ sgRNA library transduction and representation
     
     Modeling of continued passaging of cells with varying levels of library representation (adapted from Doench (2018))
 
-        * For example, to establish 500x representation, one should infect 125 million cells at MOI 0.4 when using a library with 100,000 sgRNAs. In order to maintain this level of representation, 50 million cells should be used for each subsequent passage and DNA isolation/sequencing
+    * For example, to establish 500x representation, one should infect 125 million cells at MOI 0.4 when using a library with 100,000 sgRNAs. In order to maintain this level of representation, 50 million cells should be used for each subsequent passage and DNA isolation/sequencing step
 
-        * It is recommended to harvest replicate samples at each time point, as this will allow for the analysis of technical replicates, but also serve as backups in case of sample prep failure (e.g. during DNA isolation, sequencing, etc.)
+    * It is recommended to harvest replicate samples at each time point, as this will allow for the analysis of technical replicates, but also serve as backups in case of sample prep failure (e.g. during DNA isolation, sequencing, etc.)
+
+
+Sample comparisons
+===================
+
+When comparing two conditions (e.g. genotype or treatment), sometimes one condition affects the proliferation rate of the cell model. It is important to then compare these conditions at a time point where they have the same number of cumulative population doublings.
+
+Cumulative population doublings (CPD) can be calculated as follows:
+
+.. math::
+    \Large{\displaystyle\sum_{i=p}^n CPD_i = \frac{\ln \frac{N_1}{N_0}}{\ln 2} + \frac{\ln \frac{N_2}{N_0}}{\ln 2} + ... + \frac{\ln \frac{N_p}{N_0}}{\ln 2}}
+
+where:
+
+* :math:`n` is the total passage number
+* :math:`p` is the passage number
+* :math:`N_p` is the number of cells at the end of passage :math:`p` 
+* :math:`N_0` is the number of cells seeded at the beginning of passage :math:`p`.
+
+
+Protocols
+==========
+
+Below are protocols that describe the steps involved in a CRISPR-Cas9 screen (Based on Wit et al. (2023)):
+
+(NEEDS TO BE UPDATED!):
+
+#. Creation of *Cas9* expressing cell line :download:`(Download) <cas9_transduction.pdf>`
+#. *Cas9* activity assay using flowcytometry :download:`(Download) <cas9_activity_flow.pdf>`
+#. sgRNA library virus production and tritrations :download:`(Download) <virus_production.pdf>`
+#. CRISPR-Cas9 screening :download:`(Download) <CRISPR_screening.pdf>`
 
 
 References
------------
+===========
 
-#. Hanna, R. E. & Doench, J. G. Design and analysis of CRISPR-Cas experiments. Nat. Biotechnol. 38, 813-823 (2020).
-#. Doench, J. G. Am I ready for CRISPR? A user's guide to genetic screens. Nat. Rev. Genet. 19, 67-80 (2018).
-#. Michlits, G. et al. Multilayered VBC Score Predicts sgRNAs that Efficiently Generate Loss-of-Function Alleles. Nat. Methods 17, 708-716 (2020).
-
+#. Hanna, R. E. & Doench, J. G. Design and analysis of CRISPR-Cas experiments. *Nat. Biotechnol.* 38, 813-823 (2020).
+#. Doench, J. G. Am I ready for CRISPR? A user's guide to genetic screens. *Nat. Rev. Genet.* 19, 67-80 (2018).
+#. Michlits, G. et al. Multilayered VBC Score Predicts sgRNAs that Efficiently Generate Loss-of-Function Alleles. *Nat. Methods* 17, 708-716 (2020).
+#. Wit, N. et al. A histone deacetylase 3 and mitochondrial complex I axis regulates toxic formaldehyde production. *Science Adv.* 9 (20), eadg2235 (2023)
 
 
 
