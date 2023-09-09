@@ -85,7 +85,7 @@ where:
 
 * :math:`p` is the total passage number
 * :math:`i` is the passage number
-* :math:`N_p` is the number of cells at the end of passage :math:`p` 
+* :math:`N_i` is the number of cells at the end of passage :math:`i` 
 * :math:`a` is the number of cells seeded at the beginning of passage :math:`i`.
 
 
