@@ -76,7 +76,7 @@ Sample comparisons
 
 When comparing two conditions (e.g. genotype or treatment), sometimes one condition affects the proliferation rate of the cell model. It is important to then compare these conditions at a time point where they have the same number of cumulative population doublings.
 
-Cumulative population doublings (CPD) can be calculated as follows:
+Cumulative population doublings (:math:`CPD_p`) can be calculated as follows:
 
 .. math::
     \Large{\displaystyle\sum_{i=1}^p CPD_p = \frac{\ln \frac{N_1}{a}}{\ln 2} + \frac{\ln \frac{N_2}{a}}{\ln 2} + ... + \frac{\ln \frac{N_i}{a}}{\ln 2}}
