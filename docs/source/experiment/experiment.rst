@@ -79,14 +79,14 @@ When comparing two conditions (e.g. genotype or treatment), sometimes one condit
 Cumulative population doublings (CPD) can be calculated as follows:
 
 .. math::
-    \Large{\displaystyle\sum_{i=p}^n CPD_i = \frac{\ln \frac{N_1}{N_0}}{\ln 2} + \frac{\ln \frac{N_2}{N_0}}{\ln 2} + ... + \frac{\ln \frac{N_p}{N_0}}{\ln 2}}
+    \Large{\displaystyle\sum_{i=1}^p CPD_p = \frac{\ln \frac{N_1}{a}}{\ln 2} + \frac{\ln \frac{N_2}{a}}{\ln 2} + ... + \frac{\ln \frac{N_i}{a}}{\ln 2}}
 
 where:
 
-* :math:`n` is the total passage number
-* :math:`p` is the passage number
+* :math:`p` is the total passage number
+* :math:`i` is the passage number
 * :math:`N_p` is the number of cells at the end of passage :math:`p` 
-* :math:`N_0` is the number of cells seeded at the beginning of passage :math:`p`.
+* :math:`a` is the number of cells seeded at the beginning of passage :math:`i`.
 
 
 Protocols
