@@ -205,7 +205,7 @@ if stats == "mageck":
             "logs/mageck/{comparison}.log"
         shell:
             '''
-            mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | sed 's/_vs_.*//' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | sed 's/^[^_vs_]*_vs_//' | sed 's/-/,/') -n mageck/{wildcards.comparison} 2> {log}
+            mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $1}}' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $2}}' ) -n mageck/{wildcards.comparison} 2> {log}
             '''
 
 
