@@ -6,7 +6,7 @@ long_description = (this_directory / "README.rst").read_text()
 
 setup(
     name='pycrispr',
-    version='1.2.0',
+    version='1.3.0',
     py_modules=['pycrispr'], 
     description='A package for CRISPR-Cas9 screen analysis',
     long_description=long_description,
@@ -19,7 +19,7 @@ setup(
     author_email='nw416@cam.ac.uk',
     license='GPL-3.0 license',
     packages=find_packages(),
-    install_requires=['pyyaml','Click','sphinx-click'
+    install_requires=['pyyaml','Click','sphinx-click','pandas',
                       ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
