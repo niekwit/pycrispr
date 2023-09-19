@@ -3,9 +3,9 @@
 import os
 import subprocess
 
-b2dir = snakemake.params["b2dir"]
+b2dir = snakemake.input[0]
 species = snakemake.params["species"]
-bf = snakemake.input[0]
+bf = snakemake.input[1]
 pr = snakemake.output[0]
 log = snakemake.log[0]
 

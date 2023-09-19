@@ -5,8 +5,8 @@ import pandas as pd
 import subprocess
 
 
-b2dir = snakemake.params["b2dir"]
-count_table_bagel2 = snakemake.input[0]
+b2dir = snakemake.input[0]
+count_table_bagel2 = snakemake.input[1]
 fc_table = snakemake.output[0]
 log = snakemake.log[0]
 
@@ -23,7 +23,7 @@ control = comparison.split("_vs_")[1]
 control_column = column_dict[control]
 
 #generate foldchange command
-command = f"python {b2dir}/BAGEL.py fc -i {count_table_bagel2} -o bagel2/{comparison} -c {control_column} 2> {log}"
+command = f"python {b2dir}/BAGEL.py fc -i {count_table_bagel2} -o bagel2/{comparison}/{comparison} -c {control_column} 2> {log}"
 
 #run command
 print(f"BAGEL2: generating fold change table for {comparison}...")

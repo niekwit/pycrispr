@@ -5,7 +5,6 @@ import pandas as pd
 
 
 fasta = snakemake.params["fa"]
-b2dir = snakemake.params["b2dir"]
 count_table_mageck = snakemake.input[0]
 count_table_bagel2 = snakemake.output[0]
 
