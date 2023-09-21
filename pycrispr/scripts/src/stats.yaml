@@ -1,4 +1,4 @@
-name: mageck
+name: stats
 channels: 
   - conda-forge
   - bioconda
