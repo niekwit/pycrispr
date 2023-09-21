@@ -8,7 +8,7 @@ import pandas as pd
 import glob
 import click
 
-#function to cacluate md5sum
+
 def md5(file):
     
     hash_md5 = hashlib.md5()
@@ -24,35 +24,41 @@ def md5(file):
 
 def fetch_md5sums(files):
     
-    match files:
+    if any([x for x in files if x.endswith("r_1.fq.gz")]): #Illumina platform data (NovaSeq/HiSeq)
         
-        case any([x for x in files if x.endswith(".s_1.r_1.fq.gz")]):
-            
-            return glob.glob("*.md5sums.txt")
-            
+        return glob.glob("*.md5sums.txt")
+    
+    else:
+        
+        return []
     
 
-
-#get fastq and md5sum files
-
-
-
-
-r1_tag = snakemake.params["r1_tag"]
-fastq = glob.glob(f"reads/*{r1_tag}")
-md5sum_files = [x.replace(r1_tag,".md5sums.txt") for x in fastq]
-
-#check if md5sum files exist
-for file in md5sum_files:
-    
-    if not os.path.exists(file):
+def exit():
         
         #create output file so not to crash snakemake if md5sum file does not exist
         with open(snakemake.output[0], "w") as myfile:
             myfile.write("No MD5sums calulated")
         
         #quietly exit 
-        sys.exit(0)
+        sys.exit(0)   
+            
+#get gz files 
+files=glob.glob("*.gz")
+
+#get md5sum files
+md5sum_files = fetch_md5sums(files)
+
+#if no md5sum files found, exit
+if len(md5sum_files) == 0:
+    
+    exit()
+
+#check any md5sum file is missing
+for file in md5sum_files:
+    
+    if not os.path.exists(file):
+        
+        exit()
 
 #df to store md5sums
 df = pd.DataFrame(columns=["fastq","md5sum","md5sum_calculated","correct"],
