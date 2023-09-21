@@ -1,6 +1,8 @@
 import glob
 import os
 import pandas as pd
+from pathlib import Path
+import click
 
 
 ####LOADING VARIABLES####
@@ -18,7 +20,15 @@ index = f"index_{index}/index_{index}"
 sg_length = config["lib_info"][library]["sg_length"]
 
 #load rename info
-csv = pd.read_csv("rename.csv")
+try:
+    
+    csv = pd.read_csv("rename.csv")
+
+except FileNotFoundError:
+    
+    click.secho("WARNING: No rename.csv file found!\nAssuming files have been renamed already...", fg="orange")
+
+    Path.touch("rename.done")
 
 #check if read files need to be renamed
 if not os.path.exists("rename.done"):
@@ -36,10 +46,21 @@ else:
     SAMPLES = [x for x in SAMPLES if not "_trimmed" in x]
 
 #load stats comparisons
-COMPARISONS = [value.replace(",","-") for (key,value) in config["stats"]["comparisons"].items()] #commas are not compatible with snakemake report
+try:
 
-#remove comparisons with pooled control samples (not supported by BAGEL2)
-B_COMPARISONS = [x for x in COMPARISONS if not "-" in x.split("_vs_")[1]]
+    COMPARISONS = pd.read_csv("stats.csv")
+
+    COMPARISONS = (COMPARISONS["test"] + "_vs_" + COMPARISONS["control"]).tolist()
+
+    COMPARISONS = [x.replace(",","-") for x in COMPARISONS] #commas are not compatible with snakemake report
+
+    #remove comparisons with pooled control samples (not supported by BAGEL2)
+    B_COMPARISONS = [x for x in COMPARISONS if not "-" in x.split("_vs_")[1]]
+
+except FileNotFoundError:
+
+    click.secho("WARNING: No stats.csv file found!\nSkipping statistical analysis of sgRNAs...", fg="orange")
+
 
 
 #set targets for target rule
@@ -51,6 +72,9 @@ TARGETS =   ["md5sums/md5sums.txt",
             "count/alignment-rates.pdf",
             "count/sequence-coverage.pdf",
             f"{index}.1.ht2",
+            "qc/gini-index.pdf",
+            "qc/sample-correlation.pdf",
+            "qc/missed-rgrnas.pdf",
             ]
 
 #extend target rule with MAGecK targets     
@@ -90,6 +114,13 @@ if not os.path.exists("rename.done"):
     TARGETS.extend(expand("reads/{new_file}", new_file=NEW_FILES)),
     TARGETS.append("rename.done")
 
+#get samples that were marked as replicates
+replicates = [x.split("_vs_",1)[0] for x in COMPARISONS if x.count("-") == 1]
+
+if len(replicates) > 0:
+    
+        TARGETS.append("qc/replicate-correlation/")
+
 
 #set target rule
 rule all:
@@ -105,8 +136,6 @@ if not os.path.exists("rename.done"):
             expand("reads/{old_file}", old_file=OLD_FILES),
         output:
             "md5sums/md5sums.txt"
-        params:
-            r1_tag=config["r1_tag"],
         conda:
             "envs/count.yaml"
         script:
@@ -161,8 +190,7 @@ rule trim:
     input:
         "reads/{sample}.fq.gz"
     output:
-        #temp("reads/{sample}_trimmed.fq.gz"),
-        "reads/{sample}_trimmed.fq.gz",
+        temp("reads/{sample}_trimmed.fq.gz"),
     params:
         sgl=sg_length,
         lt=config["lib_info"][library]["left_trim"],
@@ -258,6 +286,23 @@ rule mageck:
         mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $1}}' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $2}}' ) -n mageck/{wildcards.comparison}/{wildcards.comparison} {params.control} {params.extra} 2> {log}
         '''
 
+#create normalised count table (normalised to total read count)
+rule normalise_count_table:
+    input:
+        counts="count/counts-aggregated.tsv"
+    output:
+        norm_counts="count/counts-aggregated_normalised.csv"
+    run:
+        df = pd.read_table(input.counts)
+        column_range = range(2,len(df.columns))
+        for i in column_range:
+            column_sum = df.iloc[:,i].sum()
+            df.iloc[:,i] = df.iloc[:,i] / column_sum * 1E8
+            df.iloc[:,i] = df.iloc[:,i].astype(int)
+        df.to_csv(output.norm_counts,
+                index = False,
+                header = True)
+        
 
 rule mageck_flute:
     input:
@@ -272,6 +317,8 @@ rule mageck_flute:
         spc=config["lib_info"][library]["species"]
     resources:
         runtime=config["resources"]["stats"]["time"]
+    log:
+        "logs/mageck_flute/{comparison}.log"
     conda:
         "envs/flute.yaml"
     script:
@@ -281,8 +328,6 @@ rule mageck_flute:
 rule install_bagel2:
     output:
         directory("bagel2_software/"),
-    conda:
-        "envs/stats.yaml"
     shell:
         "git clone https://github.com/hart-lab/bagel.git {output}"
     
@@ -383,6 +428,7 @@ rule plot_alignment_rate:
         report("count/alignment-rates.pdf", caption="report/alignment-rates.rst", category="Alignment rates")
     params:
         name="plot_alignment_rate",
+        yaml="envs/plot_settings.yaml"
     script:
         "scripts/plot.py"
 
@@ -399,6 +445,69 @@ rule plot_coverage:
         "scripts/plot.py"
 
 
+rule plot_gini_index:
+    input:
+        "count/counts-aggregated.tsv"
+    output:
+        report("qc/gini-index.pdf", caption="report/gini-index.rst", category="Gini index")
+    params:
+        yaml="envs/plot_settings.yaml"
+    log:
+        "logs/gini-index.log"
+    conda:
+        "envs/flute.yaml"
+    script:
+        "scripts/plot_gini_index.R"
+
+
+rule plot_sample_correlation:
+    input:
+        "count/counts-aggregated_normalised.csv"
+    output:
+        report("qc/sample-correlation.pdf", caption="report/sample-correlation.rst", category="Sample correlation")
+    log:
+        "logs/sample-correlation.log"
+    conda:
+        "envs/flute.yaml"
+    script:
+        "scripts/sample_correlation.R"
+
+
+rule plot_missed_rgrnas:
+    input:
+        "count/counts-aggregated.tsv"
+    output:
+        report("qc/missed-rgrnas.pdf", caption="report/missed-rgrnas.rst", category="Missed sgRNAs")
+    params:
+        yaml="envs/plot_settings.yaml"
+    log:
+        "logs/missed-rgrnas.log"
+    conda:
+        "envs/flute.yaml"
+    script:
+        "scripts/missed_sgrnas.R"
+
+
+#get control condition (e.g. plasmid DNA sequence or early timepoint)
+control_condition = config["stats"]["control_condition"]
+
+#create replicate correlation plot if replicates are present
+if len(replicates) > 0:
+
+    rule plot_replicate_correlation:
+        input:
+            "count/counts-aggregated.tsv"
+        params:
+            reps=replicates,
+            control=control_condition,
+        output:
+            report(directory("qc/replicate-correlation/"), caption="report/replicate-correlation.rst", category="Replicate correlation")
+        log:
+            "logs/replicate-correlation.log"
+        conda:
+            "envs/flute.yaml"
+        script:
+            "scripts/replicates.R"
 
 
 
