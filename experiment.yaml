@@ -1,7 +1,3 @@
-rename: #rename to .fq.gz
-  L8_S1_L001_R1_001.fastq.gz: L8.fq.gz
-  S8_S3_L001_R1_001.fastq.gz: S8.fq.gz
-  S15_S4_L001_R1_001.fastq.gz: S15.fq.gz
 library: dub-only #CRISPR library for current experiment
 lib_info:
   dub-only:
@@ -12,11 +8,8 @@ lib_info:
     left_trim : 0 #trim n bases from 5' end of reads
 mismatch: 0 #n "mismatches allowed during alignment
 stats: 
-  bagel2_dir: /home/niek/Documents/software/bagel2
-  type: mageck #mageck or bagel2
-  comparisons: #test vs control (only alpha numerical characters allowed, except comma)
-    1: S8_vs_L8
-    2: S15_vs_L8
+  extra_mageck_arguments: "" #extra arguments for mageck
+  mageck_control_genes: all #all or file with control genes
 resources:
   account: XXX
   partition: cclake
