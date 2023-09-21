@@ -1,12 +1,26 @@
+#redirect R output to log
+log <- file(snakemake@log[[1]], open="wt")
+sink(log, type = "output")
+sink(log, type = "message")
+
+#load required libraries
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(reshape2)
+library(viridis)
+
+
 library(MAGeCKFlute)
 library(clusterProfiler)
 library(ggplot2)
+library(yaml)
 
 #path to gene summary file 
-file1 = snakemake@input[[1]]
+file1 <- snakemake@input[[1]]
 
 #path to sgRNA summary file 
-file2 = snakemake@input[[2]]
+file2 <- snakemake@input[[2]]
 
 #load data
 gdata <- ReadRRA(file1)
@@ -42,7 +56,7 @@ pdf(snakemake@output[[4]])
 sgRankView(sdata, top = 5, bottom = 5)
 dev.off()
 
-#enrichment analysis
+#enrichment analysis ###TO DO: change to use enrichR (more robust)
 tryCatch( #analysis can fail if a small gRNA library is used, so skip if any error occurs
  {
     geneList <- gdata$Score
@@ -77,7 +91,8 @@ tryCatch( #analysis can fail if a small gRNA library is used, so skip if any err
 )
 
 
-
+sink(log, type = "output")
+sink(log, type = "message")
 
 
 
