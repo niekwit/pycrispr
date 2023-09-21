@@ -111,7 +111,23 @@ def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
         click.echo(f"Plotting snakemake DAG for {stats}...")
         dag = f"snakemake --forceall --dag | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > {file}" 
         process=subprocess.check_output(dag,shell=True)
-         
+    
+    #plot rulegraph
+    if stats == "mageck":
+        
+        file = "rulegraph-mageck.pdf"
+    
+    elif stats == "bagel2":
+        
+        file = "rulegraph-bagel2.pdf"
+    
+    if not os.path.exists(file):
+        
+        click.echo(f"Plotting snakemake rulegraph for {stats}...")
+        dag = f"snakemake --forceall --rulegraph | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > {file}" 
+        process=subprocess.check_output(dag,shell=True)
+    
+     
     #construct snakemake command
     snakemake = "snakemake --output-wait 20" 
     
@@ -201,7 +217,7 @@ def version():
     
     ''' Display version of pycrispr
     '''
-    version = "1.2.0"
+    version = "1.3.0"
     
     #create report for previous pipeline run
     click.secho(f"pycrispr v{version}",fg="green")
