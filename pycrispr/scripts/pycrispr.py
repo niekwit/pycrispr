@@ -98,38 +98,25 @@ def analysis(threads,slurm,background,noconda,dryrun,cleanup,verbose):
     [shutil.copyfile(x,os.path.join(work_dir,"scripts",os.path.basename(x))) for x in python_files]
     
     #plot DAG
-    if stats == "mageck":
-        
-        file = "dag-mageck.pdf"
+    file = "dag.pdf"
     
-    elif stats == "bagel2":
-        
-        file = "dag-bagel2.pdf"    
-            
     if not os.path.exists(file):
-        
-        click.echo(f"Plotting snakemake DAG for {stats}...")
+        click.echo(f"Plotting snakemake DAG for...")
         dag = f"snakemake --forceall --dag | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > {file}" 
         process=subprocess.check_output(dag,shell=True)
     
     #plot rulegraph
-    if stats == "mageck":
-        
-        file = "rulegraph-mageck.pdf"
-    
-    elif stats == "bagel2":
-        
-        file = "rulegraph-bagel2.pdf"
-    
+    file = "rulegraph-mageck.pdf"
+
     if not os.path.exists(file):
         
-        click.echo(f"Plotting snakemake rulegraph for {stats}...")
+        click.echo(f"Plotting snakemake rulegraph...")
         dag = f"snakemake --forceall --rulegraph | grep -v '\-> 0\|0\[label = \"all\"' |dot -Tpdf > {file}" 
         process=subprocess.check_output(dag,shell=True)
     
      
     #construct snakemake command
-    snakemake = "snakemake --output-wait 20" 
+    snakemake = "snakemake --output-wait 10 --keep-going" #minimal command
     
     if not noconda:
         
