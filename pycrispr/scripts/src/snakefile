@@ -1,6 +1,7 @@
 import glob
 import os
 import pandas as pd
+import sys
 from pathlib import Path
 import click
 
@@ -14,10 +15,59 @@ configfile: "experiment.yaml"
 library = config["library"]
 fasta = config["lib_info"][library]["fasta"]
 
+#check if fasta file is correct (same amount of lines starting with and without >)
+with open(fasta, "r") as f:
+    
+    lines = f.readlines()
+    
+    lines_seq = [x for x in lines if not x.startswith(">")]
+    lines_name = [x for x in lines if x.startswith(">")]
+    
+    if len(lines_seq) != len(lines_name):
+        
+        click.secho("ERROR: Fasta file is not correct (number of name and sequence lines does not match)...", fg="red")
+        
+        sys.exit(1)
+
+#get gene count from sgRNA fasta file
+f = open(fasta,'r')
+lines = f.readlines()
+gene_number = len(set([x.split("_")[0] for x in lines[::2]]))
+
+#prepare HISAT2 index name
 index = os.path.basename(fasta).split(".",1)[0]
 index = f"index_{index}/index_{index}"
 
+#get sgRNA length
 sg_length = config["lib_info"][library]["sg_length"]
+
+#get vector sequence to remove (if any)
+try:
+    
+    vector = config["lib_info"][library]["vector"]
+
+    #check if vector is DNA sequence or empty
+    if vector == "":
+
+        cut_arg = f"-l {sg_length}"
+
+    elif not set(vector.lower()).issubset(set("atcg")):
+        
+        click.secho(f"ERROR: vector sequence ({vector}) for {library} is not a DNA sequence...", fg="red")
+        
+        sys.exit(1)
+    
+    else:
+        
+        cut_arg = f"-a {vector}" 
+    
+except KeyError:
+    
+    cut_arg = f"-l {sg_length}"
+
+
+#check if stats should be skipped
+skip_stats = config["stats"]["skip"]
 
 #load rename info
 try:
@@ -38,6 +88,7 @@ if not os.path.exists("rename.done"):
 
     #create sample names
     SAMPLES = [x.replace(".fq.gz","") for x in NEW_FILES]
+
 else:
     
     #create sample names
@@ -52,7 +103,7 @@ try:
 
     COMPARISONS = (COMPARISONS["test"] + "_vs_" + COMPARISONS["control"]).tolist()
 
-    COMPARISONS = [x.replace(",","-") for x in COMPARISONS] #commas are not compatible with snakemake report
+    COMPARISONS = [x.replace(";","-") for x in COMPARISONS]
 
     #remove comparisons with pooled control samples (not supported by BAGEL2)
     B_COMPARISONS = [x for x in COMPARISONS if not "-" in x.split("_vs_")[1]]
@@ -72,31 +123,53 @@ TARGETS =   ["md5sums/md5sums.txt",
             "count/alignment-rates.pdf",
             "count/sequence-coverage.pdf",
             f"{index}.1.ht2",
+            f"{index}.2.ht2",
+            f"{index}.3.ht2",
+            f"{index}.4.ht2",
+            f"{index}.5.ht2",
+            f"{index}.6.ht2",
+            f"{index}.7.ht2",
+            f"{index}.8.ht2",
             "qc/gini-index.pdf",
             "qc/sample-correlation.pdf",
             "qc/missed-rgrnas.pdf",
             ]
 
-#extend target rule with MAGecK targets     
-TARGETS.extend([
-    expand("mageck/{comparison}/{comparison}.gene_summary.txt", comparison=COMPARISONS),
-    expand("mageck/{comparison}/{comparison}.sgrna_summary.txt", comparison=COMPARISONS),
-    expand("mageck_flute/{comparison}/{comparison}.volcano.pdf", comparison=COMPARISONS),
-    expand("mageck_flute/{comparison}/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
-    expand("mageck_flute/{comparison}/{comparison}.dot_neg.pdf", comparison=COMPARISONS),
-    expand("mageck_flute/{comparison}/{comparison}.sgrank.pdf", comparison=COMPARISONS)
-])
+if skip_stats != "mageck" and skip_stats !="both":
+    
+    #extend target rule with MAGecK targets     
+    TARGETS.extend([
+        expand("mageck/{comparison}/{comparison}.gene_summary.txt", comparison=COMPARISONS),
+        expand("mageck/{comparison}/{comparison}.sgrna_summary.txt", comparison=COMPARISONS),
+        expand("mageck_plots/{comparison}/{comparison}.volcano.pdf", comparison=COMPARISONS),
+        expand("mageck_plots/{comparison}/{comparison}.dot_pos.pdf", comparison=COMPARISONS),
+        expand("mageck_plots/{comparison}/{comparison}.dot_neg.pdf", comparison=COMPARISONS),
+        expand("mageck_plots/{comparison}/{comparison}.sgrank.pdf", comparison=COMPARISONS),
+        
+    ])
 
-#extend target rule with BAGEL2 targets
-TARGETS.extend([
-    "bagel2_software/",
-    "count/counts-aggregated-bagel2.tsv",
-    expand("bagel2/{bcomparison}/{bcomparison}.foldchange", bcomparison=B_COMPARISONS),
-    expand("bagel2/{bcomparison}/{bcomparison}.bf", bcomparison=B_COMPARISONS),
-    expand("bagel2/{bcomparison}/{bcomparison}.pr", bcomparison=B_COMPARISONS),
-    expand("bagel2_plots/{bcomparison}/{bcomparison}.bf.pdf", bcomparison=B_COMPARISONS),
-    expand("bagel2_plots/{bcomparison}/{bcomparison}.pr.pdf", bcomparison=B_COMPARISONS),
-])
+    if gene_number > 15000: #only perform GO analysis on whole genome libraries (assume that number of genes in library is > 15k)
+            
+            TARGETS.extend([
+                #expand("GO_analysis/{comparison}/depletion/GO_analysis.xlsx", comparison=COMPARISONS),
+                #expand("GO_analysis/{comparison}/depletion/dot_plot.pdf", comparison=COMPARISONS),
+                #expand("GO_analysis/{comparison}/enrichment/GO_analysis.xlsx", comparison=COMPARISONS),
+                #expand("GO_analysis/{comparison}/enrichment/dot_plot.pdf", comparison=COMPARISONS),
+                expand("mageck_go_analysis/{comparison}/", comparison=COMPARISONS),
+            ])
+
+if skip_stats != "bagel2" and skip_stats !="both":
+    
+    #extend target rule with BAGEL2 targets
+    TARGETS.extend([
+        "bagel2_software/",
+        "count/counts-aggregated-bagel2.tsv",
+        expand("bagel2/{bcomparison}/{bcomparison}.foldchange", bcomparison=B_COMPARISONS),
+        expand("bagel2/{bcomparison}/{bcomparison}.bf", bcomparison=B_COMPARISONS),
+        expand("bagel2/{bcomparison}/{bcomparison}.pr", bcomparison=B_COMPARISONS),
+        expand("bagel2_plots/{bcomparison}/{bcomparison}.bf.pdf", bcomparison=B_COMPARISONS),
+        expand("bagel2_plots/{bcomparison}/{bcomparison}.pr.pdf", bcomparison=B_COMPARISONS),
+    ])
 
 
 
@@ -106,21 +179,20 @@ TARGETS.extend([
 report: "report/report.rst"
 
 #rules to be run on login node instead of compute node when running on HPC (only very small jobs)
-localrules: all, rename, aggregated_counts, plot_alignment_rate, plot_coverage, plot_bf, plot_pr
+if skip_stats != "none" and skip_stats != "bagel2":
+
+    localrules: all, rename, aggregated_counts, plot_alignment_rate, plot_coverage, plot_bf, plot_pr
+
+else:
+
+    localrules: all, rename, aggregated_counts, plot_alignment_rate, plot_coverage
+
 
 #extend TARGETS with renamed files if required
 if not os.path.exists("rename.done"):
     
     TARGETS.extend(expand("reads/{new_file}", new_file=NEW_FILES)),
     TARGETS.append("rename.done")
-
-#get samples that were marked as replicates
-replicates = [x.split("_vs_",1)[0] for x in COMPARISONS if x.count("-") == 1]
-
-if len(replicates) > 0:
-    
-        TARGETS.append("qc/replicate-correlation/")
-
 
 #set target rule
 rule all:
@@ -132,8 +204,6 @@ rule all:
 if not os.path.exists("rename.done"):
     
     rule check_md5_sums:
-        input:
-            expand("reads/{old_file}", old_file=OLD_FILES),
         output:
             "md5sums/md5sums.txt"
         conda:
@@ -192,7 +262,7 @@ rule trim:
     output:
         temp("reads/{sample}_trimmed.fq.gz"),
     params:
-        sgl=sg_length,
+        cut_arg=cut_args,
         lt=config["lib_info"][library]["left_trim"],
     threads: config["resources"]["trim"]["cpu"]
     conda:
@@ -202,12 +272,19 @@ rule trim:
     resources:
         runtime=config["resources"]["trim"]["time"]
     shell:
-        "cutadapt -j {threads} --quality-base 33 -u {params.lt} -l {params.sgl} -o {output} {input}"
+        "cutadapt -j {threads} --quality-base 33 -u {params.lt} {cut_args} {input} > {output} 2> {log}"
 
 
-rule hisat2_index:
+rule hisat2_index: 
     output:
         f"{index}.1.ht2",
+        f"{index}.2.ht2",
+        f"{index}.3.ht2",
+        f"{index}.4.ht2",
+        f"{index}.5.ht2",
+        f"{index}.6.ht2",
+        f"{index}.7.ht2",
+        f"{index}.8.ht2",
     threads: config["resources"]["count"]["cpu"]
     resources:
         runtime=config["resources"]["count"]["time"]
@@ -250,175 +327,206 @@ rule aggregated_counts:
         "scripts/join.py"
 
 
-#check if control genes are specified for generating null distribution of RRA scores
-if config["stats"]["mageck_control_genes"] == "all": #use all genes as controls
+if skip_stats != "mageck" and skip_stats !="both":
 
-    control = ""
+    #check if control genes are specified for generating null distribution of RRA scores
+    if config["stats"]["mageck_control_genes"] == "all": #use all genes as controls
 
-else: #use genes from file set in config
+        control = ""
 
-    file = config["stats"]["mageck_control_genes"]
+    else: #use genes from file set in config
 
-    control = f"--control-gene {file}" 
+        file = config["stats"]["mageck_control_genes"]
+
+        control = f"--control-gene {file}" 
 
 
-rule mageck:
-    input: 
-        "count/counts-aggregated.tsv"
-    output:
-        "mageck/{comparison}/{comparison}_summary.Rnw",
-        report("mageck/{comparison}/{comparison}.gene_summary.txt", caption="report/mageck.rst", category="MAGeCK"),
-        "mageck/{comparison}/{comparison}.log",
-        "mageck/{comparison}/{comparison}.R",
-        "mageck/{comparison}/{comparison}.sgrna_summary.txt",
-        "mageck/{comparison}/{comparison}.normalized.txt"
-    params:
-        control=control,
-        extra=config["stats"]["extra_mageck_arguments"],
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    conda:
-        "envs/stats.yaml"
-    log:
-        "logs/mageck/{comparison}.log"
-    shell:
-        '''
-        mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $1}}' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $2}}' ) -n mageck/{wildcards.comparison}/{wildcards.comparison} {params.control} {params.extra} 2> {log}
-        '''
+    rule mageck:
+        input: 
+            "count/counts-aggregated.tsv"
+        output:
+            "mageck/{comparison}/{comparison}_summary.Rnw",
+            report("mageck/{comparison}/{comparison}.gene_summary.txt", caption="report/mageck.rst", category="MAGeCK"),
+            "mageck/{comparison}/{comparison}.log",
+            "mageck/{comparison}/{comparison}.R",
+            "mageck/{comparison}/{comparison}.sgrna_summary.txt",
+            "mageck/{comparison}/{comparison}.normalized.txt"
+        params:
+            control=control,
+            extra=config["stats"]["extra_mageck_arguments"],
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        conda:
+            "envs/stats.yaml"
+        log:
+            "logs/mageck/{comparison}.log"
+        shell:
+            '''
+            mageck test --normcounts-to-file -k {input} -t $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $1}}' | sed 's/-/,/') -c $(echo "{wildcards.comparison}" | awk -F '_vs_' '{{print $2}}' | sed 's/-/,/' ) -n mageck/{wildcards.comparison}/{wildcards.comparison} {params.control} {params.extra} 2> {log}
+            '''
 
-#create normalised count table (normalised to total read count)
-rule normalise_count_table:
-    input:
-        counts="count/counts-aggregated.tsv"
-    output:
-        norm_counts="count/counts-aggregated_normalised.csv"
-    run:
-        df = pd.read_table(input.counts)
-        column_range = range(2,len(df.columns))
-        for i in column_range:
-            column_sum = df.iloc[:,i].sum()
-            df.iloc[:,i] = df.iloc[:,i] / column_sum * 1E8
-            df.iloc[:,i] = df.iloc[:,i].astype(int)
-        df.to_csv(output.norm_counts,
-                index = False,
-                header = True)
+    #create normalised count table (normalised to total read count)
+    rule normalise_count_table:
+        input:
+            counts="count/counts-aggregated.tsv"
+        output:
+            norm_counts="count/counts-aggregated_normalised.csv"
+        run:
+            df = pd.read_table(input.counts)
+            column_range = range(2,len(df.columns))
+            for i in column_range:
+                column_sum = df.iloc[:,i].sum()
+                df.iloc[:,i] = df.iloc[:,i] / column_sum * 1E8
+                df.iloc[:,i] = df.iloc[:,i].astype(int)
+            df.to_csv(output.norm_counts,
+                    index = False,
+                    header = True)
+            
+
+    rule mageck_plots:
+        input:
+            "mageck/{comparison}/{comparison}.gene_summary.txt",
+            "mageck/{comparison}/{comparison}.sgrna_summary.txt"
+        output:
+            volc=report("mageck_plots/{comparison}/{comparison}.volcano.pdf", caption="report/volcano.rst", category="MAGeCK plots", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "volcano plot"}),
+            dot_pos=report("mageck_plots/{comparison}/{comparison}.dot_pos.pdf", caption="report/dot-plot_pos.rst", category="MAGeCK plots", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot enriched genes"}),
+            dot_neg=report("mageck_plots/{comparison}/{comparison}.dot_neg.pdf", caption="report/dot-plot_neg.rst", category="MAGeCK plots", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot depleted genes"}),
+            rank=report("mageck_plots/{comparison}/{comparison}.sgrank.pdf", caption="report/sgrank.rst", category="MAGeCK plots", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "sgRNA rank"}),
+        params:
+            spc=config["lib_info"][library]["species"],
+            fdr=config["stats"]["fdr"],
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        log:
+            "logs/mageck_plots/{comparison}.log"
+        conda:
+            "envs/r-plots.yaml"
+        script:
+            "scripts/mageck_plots.R"
+    
+
+    if gene_number > 15000: #only perform GO analysis on whole genome libraries (assume that number of genes in library is > 15k)
+
+        rule mageck_go_analysis:
+            input:
+                "mageck/{comparison}/{comparison}.gene_summary.txt",
+            output:
+                directory("mageck_go_analysis/{comparison}/"),
+                #go_x_neg=report("GO_analysis/{comparison}/depletion/GO_analysis.xlsx", caption="report/GO_analysis.rst", category="GO analysis", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "GO analysis"}),
+                #go_p_neg=report("GO_analysis/{comparison}/depletion/dot_plot.pdf", caption="report/GO_analysis_plot.rst", category="GO analysis", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "GO analysis"}),
+                #go_x_pos=report("GO_analysis/{comparison}/enrichment/GO_analysis.xlsx", caption="report/GO_analysis.rst", category="GO analysis", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "GO analysis"}),
+                #go_p_pos=report("GO_analysis/{comparison}/enrichment/dot_plot.pdf", caption="report/GO_analysis_plot.rst", category="GO analysis", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "GO analysis"}),
+            params:
+                spc=config["lib_info"][library]["species"],
+                fdr=config["stats"]["fdr"],
+            resources:
+                runtime=config["resources"]["stats"]["time"]
+            log:
+                "logs/mageck_go_analysis/{comparison}.log"
+            conda:
+                "envs/r-plots.yaml"
+            script:
+                "scripts/mageck_go_analysis.R"
+
+
+if skip_stats != "bagel2" and skip_stats !="both":
+    
+    rule install_bagel2:
+        output:
+            directory("bagel2_software/"),
+        log:
+            "logs/bagel2/install.log"
+        shell:
+            "git clone https://github.com/hart-lab/bagel.git {output} 2> {log}"
         
 
-rule mageck_flute:
-    input:
-        "mageck/{comparison}/{comparison}.gene_summary.txt",
-        "mageck/{comparison}/{comparison}.sgrna_summary.txt"
-    output:
-        report("mageck_flute/{comparison}/{comparison}.volcano.pdf", caption="report/volcano.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "volcano plot"}),
-        report("mageck_flute/{comparison}/{comparison}.dot_pos.pdf", caption="report/dot-plot_pos.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot enriched genes"}),
-        report("mageck_flute/{comparison}/{comparison}.dot_neg.pdf", caption="report/dot-plot_neg.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "dot plot depleted genes"}),
-        report("mageck_flute/{comparison}/{comparison}.sgrank.pdf", caption="report/sgrank.rst", category="MAGeCK Flute", subcategory="{comparison}", labels={"Comparison":"{comparison}","Figure": "sgRNA rank"}),
-    params:
-        spc=config["lib_info"][library]["species"]
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    log:
-        "logs/mageck_flute/{comparison}.log"
-    conda:
-        "envs/flute.yaml"
-    script:
-        "scripts/flute.R"
-
-    
-rule install_bagel2:
-    output:
-        directory("bagel2_software/"),
-    shell:
-        "git clone https://github.com/hart-lab/bagel.git {output}"
-    
-
-rule convert_count_table:
-    input:
-        "count/counts-aggregated.tsv"
-    output:
-        "count/counts-aggregated-bagel2.tsv"
-    params:
-        fa=fasta,
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    conda:
-        "envs/stats.yaml"
-    script:
-        "scripts/convert_count_table.py"
+    rule convert_count_table:
+        input:
+            "count/counts-aggregated.tsv"
+        output:
+            "count/counts-aggregated-bagel2.tsv"
+        params:
+            fa=fasta,
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        conda:
+            "envs/stats.yaml"
+        script:
+            "scripts/convert_count_table.py"
 
 
-rule bagel2fc:
-    input:
-        "bagel2_software/",
-        "count/counts-aggregated-bagel2.tsv",
-    output:
-        "bagel2/{bcomparison}/{bcomparison}.foldchange"
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    conda:
-        "envs/stats.yaml"
-    log:
-        "logs/bagel2/fc/{bcomparison}.log"
-    script:
-        "scripts/bagel2fc.py"
+    rule bagel2fc:
+        input:
+            "bagel2_software/",
+            "count/counts-aggregated-bagel2.tsv",
+        output:
+            "bagel2/{bcomparison}/{bcomparison}.foldchange"
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        conda:
+            "envs/stats.yaml"
+        log:
+            "logs/bagel2/fc/{bcomparison}.log"
+        script:
+            "scripts/bagel2fc.py"
 
 
-rule bagel2bf:
-    input:
-        "bagel2_software/",
-        "bagel2/{bcomparison}/{bcomparison}.foldchange",
-    output:
-        "bagel2/{bcomparison}/{bcomparison}.bf"
-    params:
-        species=config["lib_info"][library]["species"],
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    conda:
-        "envs/stats.yaml"
-    log:
-        "logs/bagel2/bf_{bcomparison}.log"
-    script:
-        "scripts/bagel2bf.py"
+    rule bagel2bf:
+        input:
+            "bagel2_software/",
+            "bagel2/{bcomparison}/{bcomparison}.foldchange",
+        output:
+            "bagel2/{bcomparison}/{bcomparison}.bf"
+        params:
+            species=config["lib_info"][library]["species"],
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        conda:
+            "envs/stats.yaml"
+        log:
+            "logs/bagel2/bf/{bcomparison}.log"
+        script:
+            "scripts/bagel2bf.py"
 
 
-rule bagel2pr:
-    input:
-        "bagel2_software/",
-        "bagel2/{bcomparison}/{bcomparison}.bf",
-    output:
-        report("bagel2/{bcomparison}/{bcomparison}.pr", caption="report/bagel2.rst", category="BAGEL2")
-    params:
-        species=config["lib_info"][library]["species"]
-    resources:
-        runtime=config["resources"]["stats"]["time"]
-    conda:
-        "envs/stats.yaml"
-    log:
-        "logs/bagel2/pr_{bcomparison}.log"
-    script:
-        "scripts/bagel2pr.py"
+    rule bagel2pr:
+        input:
+            "bagel2_software/",
+            "bagel2/{bcomparison}/{bcomparison}.bf",
+        output:
+            report("bagel2/{bcomparison}/{bcomparison}.pr", caption="report/bagel2.rst", category="BAGEL2")
+        params:
+            species=config["lib_info"][library]["species"]
+        resources:
+            runtime=config["resources"]["stats"]["time"]
+        conda:
+            "envs/stats.yaml"
+        log:
+            "logs/bagel2/pr/{bcomparison}.log"
+        script:
+            "scripts/bagel2pr.py"
 
 
-rule plot_bf:
-    input:
-        "bagel2/{bcomparison}/{bcomparison}.bf"
-    output:
-        report("bagel2_plots/{bcomparison}/{bcomparison}.bf.pdf", caption="report/bagel2_plots.rst", category="BAGEL2 plots", subcategory="{bcomparison}", labels={"Comparison":"{bcomparison}", "Figure":"BF plot"})
-    conda:
-        "envs/stats.yaml"
-    script:
-        "scripts/plot_bf.py"
+    rule plot_bf:
+        input:
+            "bagel2/{bcomparison}/{bcomparison}.bf"
+        output:
+            report("bagel2_plots/{bcomparison}/{bcomparison}.bf.pdf", caption="report/bagel2_plots.rst", category="BAGEL2 plots", subcategory="{bcomparison}", labels={"Comparison":"{bcomparison}", "Figure":"BF plot"})
+        conda:
+            "envs/stats.yaml"
+        script:
+            "scripts/plot_bf.py"
 
 
-rule plot_pr:
-    input:
-        "bagel2/{bcomparison}/{bcomparison}.pr"
-    output:
-        report("bagel2_plots/{bcomparison}/{bcomparison}.pr.pdf", caption="report/bagel2_plots.rst", category="BAGEL2 plots", subcategory="{bcomparison}", labels={"Comparison":"{bcomparison}", "Figure":"Precision-recall plot"})
-    conda:
-        "envs/stats.yaml"
-    script:
-        "scripts/plot_pr.py"
+    rule plot_pr:
+        input:
+            "bagel2/{bcomparison}/{bcomparison}.pr"
+        output:
+            report("bagel2_plots/{bcomparison}/{bcomparison}.pr.pdf", caption="report/bagel2_plots.rst", category="BAGEL2 plots", subcategory="{bcomparison}", labels={"Comparison":"{bcomparison}", "Figure":"Precision-recall plot"})
+        conda:
+            "envs/stats.yaml"
+        script:
+            "scripts/plot_pr.py"
 
 
 rule plot_alignment_rate:
@@ -455,7 +563,7 @@ rule plot_gini_index:
     log:
         "logs/gini-index.log"
     conda:
-        "envs/flute.yaml"
+        "envs/r-plots.yaml"
     script:
         "scripts/plot_gini_index.R"
 
@@ -468,7 +576,7 @@ rule plot_sample_correlation:
     log:
         "logs/sample-correlation.log"
     conda:
-        "envs/flute.yaml"
+        "envs/r-plots.yaml"
     script:
         "scripts/sample_correlation.R"
 
@@ -483,31 +591,23 @@ rule plot_missed_rgrnas:
     log:
         "logs/missed-rgrnas.log"
     conda:
-        "envs/flute.yaml"
+        "envs/r-plots.yaml"
     script:
         "scripts/missed_sgrnas.R"
 
 
-#get control condition (e.g. plasmid DNA sequence or early timepoint)
-control_condition = config["stats"]["control_condition"]
+#save snakemake terminal output to log file
+snake_log = "logs/snakemake.log"
 
-#create replicate correlation plot if replicates are present
-if len(replicates) > 0:
+onsuccess:
+    
+    shell("cp -v {log} {snake_log}")
+    click.secho("Analysis finished successfully!", fg="green")
 
-    rule plot_replicate_correlation:
-        input:
-            "count/counts-aggregated.tsv"
-        params:
-            reps=replicates,
-            control=control_condition,
-        output:
-            report(directory("qc/replicate-correlation/"), caption="report/replicate-correlation.rst", category="Replicate correlation")
-        log:
-            "logs/replicate-correlation.log"
-        conda:
-            "envs/flute.yaml"
-        script:
-            "scripts/replicates.R"
+onerror:
+    
+    shell("cp -v {log} {snake_log}")
+    click.secho(f"Analysis (partly) failed...\nCheck {snake_log} for details", fg="red")
 
 
 
